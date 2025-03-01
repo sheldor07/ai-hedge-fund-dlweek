@@ -125,22 +125,48 @@ def run_agents(agents: dict):
         try:
             results = agent.run()
             
-            # Print portfolio summary
+            # Print portfolio summary with performance metrics
             portfolio = results["portfolio"]
+            
+            # Calculate profit/loss (P&L) and return
+            initial_value = 100000.00  # Starting value
+            p_l = portfolio['value'] - initial_value
+            percent_return = (p_l / initial_value) * 100
+            
             print(f"\nPortfolio Summary for {agent_id}:")
             print(f"Cash: ${portfolio['cash']:.2f}")
             print(f"Portfolio Value: ${portfolio['value']:.2f}")
+            print(f"Profit/Loss: ${p_l:.2f} ({percent_return:.2f}%)")
+            
             print("Positions:")
-            for ticker, position in portfolio["positions"].items():
-                print(f"  {ticker}: {position['shares']:.2f} shares @ ${position['avg_price']:.2f}")
+            if portfolio["positions"]:
+                for ticker, position in portfolio["positions"].items():
+                    current_value = position['shares'] * results["analysis"][ticker]["current_price"]
+                    cost_basis = position['cost_basis'] if 'cost_basis' in position else position['shares'] * position['avg_price']
+                    unrealized_gain = current_value - cost_basis
+                    position_return = (unrealized_gain / cost_basis) * 100 if cost_basis > 0 else 0
+                    
+                    print(f"  {ticker}: {position['shares']:.2f} shares @ ${position['avg_price']:.2f} " +
+                          f"(Current: ${results['analysis'][ticker]['current_price']:.2f}, " +
+                          f"Value: ${current_value:.2f}, P&L: ${unrealized_gain:.2f} / {position_return:.2f}%)")
+            else:
+                print("  No positions")
                 
             # Print trade summary
             print("\nTrades:")
             for ticker, trade in results["trades"].items():
                 if trade["action"] == "hold":
                     print(f"  {ticker}: HOLD (confidence: {trade['confidence']:.4f})")
+                elif trade["action"] in ["buy", "sell"]:
+                    print(f"  {ticker}: {trade['action'].upper()} {trade['quantity']:.2f} shares @ ${trade['price']:.2f} " +
+                          f"(${trade['value']:.2f}, confidence: {trade['confidence']:.4f})")
+                elif trade["action"] == "buy_signal" and trade["status"] == "insufficient_cash":
+                    print(f"  {ticker}: BUY SIGNAL but insufficient cash " +
+                          f"(needed: ${trade['trade_value']:.2f}, available: ${trade['cash_available']:.2f}, confidence: {trade['confidence']:.4f})")
+                elif trade["action"] == "sell_signal" and trade["status"] == "no_position":
+                    print(f"  {ticker}: SELL SIGNAL but no position (confidence: {trade['confidence']:.4f})")
                 else:
-                    print(f"  {ticker}: {trade['action'].upper()} {trade['quantity']:.2f} shares @ ${trade['price']:.2f} (confidence: {trade['confidence']:.4f})")
+                    print(f"  {ticker}: {trade['action'].upper()} (status: {trade['status']}, confidence: {trade['confidence']:.4f})")
                     
         except Exception as e:
             print(f"Error running {agent_id}: {e}")
@@ -183,19 +209,85 @@ def analyze_tickers(agents: dict, ticker: str = None):
             print(f"Error analyzing with {agent_id}: {e}")
 
 def show_status(agents: dict):
-    """Show agent status"""
-    print("\nAgent Status:")
-    print("-" * 80)
-    print(f"{'Agent ID':<20} {'Status':<10} {'Portfolio Value':<20} {'Cash':<15} {'Positions'}")
-    print("-" * 80)
+    """Show agent status with performance metrics"""
+    print("\nAgent Status and Performance:")
+    print("-" * 100)
+    header = f"{'Agent ID':<15} {'Status':<10} {'Portfolio Value':<15} {'Cash':<15} {'P&L':<15} {'Return %':<10} {'Positions'}"
+    print(header)
+    print("-" * 100)
+    
+    initial_value = 100000.00  # Starting value
     
     for agent_id, agent in agents.items():
         status = agent.get_status()
-        positions_str = ", ".join([f"{t}: {p['shares']:.1f}" for t, p in status["positions"].items()])
         
-        print(f"{agent_id:<20} {status['status']:<10} ${status['portfolio_value']:<18.2f} ${status['cash']:<13.2f} {positions_str}")
+        # Calculate P&L and return
+        p_l = status['portfolio_value'] - initial_value
+        percent_return = (p_l / initial_value) * 100
+        
+        # Format positions string
+        if status["positions"]:
+            positions_str = ", ".join([f"{t}: {p['shares']:.1f}" for t, p in status["positions"].items()])
+        else:
+            positions_str = "None"
+        
+        # Print row with performance metrics
+        print(f"{agent_id:<15} {status['status']:<10} " +
+              f"${status['portfolio_value']:<14.2f} ${status['cash']:<14.2f} " +
+              f"${p_l:<14.2f} {percent_return:<9.2f}% {positions_str}")
     
-    print("-" * 80)
+    print("-" * 100)
+    
+    # Check if there's performance history to display
+    has_performance = False
+    for agent_id, agent in agents.items():
+        status = agent.get_status()
+        if "performance" in status and len(status["performance"]) > 1:  # Need at least 2 points for history
+            has_performance = True
+            break
+    
+    if has_performance:
+        print("\nPerformance History:")
+        print("-" * 80)
+        
+        # Find all dates across all agents
+        all_dates = set()
+        for agent_id, agent in agents.items():
+            status = agent.get_status()
+            if "performance" in status:
+                for entry in status["performance"]:
+                    all_dates.add(entry["date"])
+        
+        all_dates = sorted(list(all_dates))
+        
+        # Print header
+        date_header = f"{'Date':<12}"
+        agent_headers = " ".join([f"{agent_id[:10]:<15}" for agent_id in agents.keys()])
+        print(f"{date_header} {agent_headers}")
+        print("-" * 80)
+        
+        # Print value for each date and agent
+        for date in all_dates:
+            row = f"{date:<12}"
+            
+            for agent_id, agent in agents.items():
+                status = agent.get_status()
+                value = ""
+                
+                if "performance" in status:
+                    for entry in status["performance"]:
+                        if entry["date"] == date:
+                            value = f"${entry['value']:<14.2f}"
+                            break
+                
+                if not value:
+                    value = f"{'N/A':<15}"
+                    
+                row += f" {value}"
+            
+            print(row)
+        
+        print("-" * 80)
 
 def main():
     """Main entry point"""

@@ -229,8 +229,17 @@ class DataLoader:
         Returns:
             Tuple of (X_train, y_train, X_val, y_val, X_test, y_test)
         """
+        # Feature selection to remove highly correlated features
+        features_to_check = [col for col in df.columns if col != 'target']
+        corr_matrix = df[features_to_check].corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+        
+        print(f"Dropping {len(to_drop)} highly correlated features")
+        df_reduced = df.drop(columns=to_drop)
+        
         # Normalize data
-        normalized_df, scaler = self.normalize_data(df)
+        normalized_df, scaler = self.normalize_data(df_reduced)
         
         # Create train/val/test indices
         n = len(normalized_df)
@@ -263,12 +272,20 @@ class DataLoader:
         df = self.download_historical_data(period="60d")[ticker]
         df = self.add_technical_indicators(df)
         
+        # Feature selection to remove highly correlated features
+        features_to_check = [col for col in df.columns if col != 'target']
+        corr_matrix = df[features_to_check].corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+        to_drop = [column for column in upper.columns if any(upper[column] > 0.95)]
+        
+        df_reduced = df.drop(columns=to_drop)
+        
         # Normalize using existing scaler or create new one
         if ticker in self.scalers:
-            normalized_df, _ = self.normalize_data(df, fit_scaler=False)
+            normalized_df, _ = self.normalize_data(df_reduced, fit_scaler=False)
             scaler = self.scalers[ticker]
         else:
-            normalized_df, scaler = self.normalize_data(df)
+            normalized_df, scaler = self.normalize_data(df_reduced)
             self.scalers[ticker] = scaler
         
         # Create sequence

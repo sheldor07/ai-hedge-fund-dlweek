@@ -7,23 +7,30 @@
     "WMT",
     "DIS"
   ],
-  "last_analysis_time": "2025-03-01T19:55:52.996032",
+  "last_analysis_time": "2025-03-01T22:16:36.773130",
   "status": "active",
   "positions": {
-    "NVDA": {
-      "shares": 101.28295364321373,
-      "avg_price": 124.91999816894533,
-      "cost_basis": 12652.266383655633
-    },
     "DIS": {
-      "shares": 98.47811110543819,
+      "shares": 111.16219989294007,
       "avg_price": 113.8000030517578,
-      "cost_basis": 11206.80934433021
+      "cost_basis": 12650.25868705669
     }
   },
-  "cash": 76140.92427201416,
+  "cash": 87349.74131294331,
   "portfolio_value": 100000.0,
   "performance": [
+    {
+      "date": "2025-03-01",
+      "value": 100000.0
+    },
+    {
+      "date": "2025-03-01",
+      "value": 100000.0
+    },
+    {
+      "date": "2025-03-01",
+      "value": 100000.0
+    },
     {
       "date": "2025-03-01",
       "value": 100000.0
@@ -65,7 +72,7 @@
   "personality": "balanced",
   "config": {
     "lookback_window": 30,
-    "prediction_threshold": 0.55,
+    "prediction_threshold": 0.52,
     "position_sizing": 0.1,
     "max_position": 0.25,
     "stop_loss": 0.05,
@@ -73,9 +80,9 @@
     "use_stop_loss": true,
     "use_take_profit": true,
     "confidence_weight": {
-      "lstm": 0.4,
-      "transformer": 0.4,
-      "technicals": 0.2
+      "lstm": 0.45,
+      "transformer": 0.45,
+      "technicals": 0.1
     }
   }
 }

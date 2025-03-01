@@ -76,7 +76,7 @@ class MLAgent(AgentBase):
         # Common configuration
         common_config = {
             "lookback_window": 30,
-            "prediction_threshold": 0.55,  # Minimum probability to consider
+            "prediction_threshold": 0.52,  # Reduced threshold to trigger more trades
             "position_sizing": 0.1,  # Base position size as % of portfolio
             "max_position": 0.25,  # Maximum position size as % of portfolio
             "stop_loss": 0.05,  # Stop loss as % of position value
@@ -89,59 +89,61 @@ class MLAgent(AgentBase):
         if personality == "conservative":
             return {
                 **common_config,
-                "prediction_threshold": 0.65,  # Higher threshold
+                "prediction_threshold": 0.55,  # Lowered from 0.65 but still conservative
                 "position_sizing": 0.05,  # Smaller position size
                 "max_position": 0.15,  # Smaller max position
                 "stop_loss": 0.03,  # Tighter stop loss
                 "take_profit": 0.07,  # Lower take profit
                 "confidence_weight": {
-                    "lstm": 0.4,
-                    "transformer": 0.3,
+                    "lstm": 0.35,
+                    "transformer": 0.35,
                     "technicals": 0.3
                 }
             }
         elif personality == "balanced":
             return {
                 **common_config,
+                "prediction_threshold": 0.52,  # Lowered to generate more signals
                 "confidence_weight": {
-                    "lstm": 0.4,
-                    "transformer": 0.4,
-                    "technicals": 0.2
+                    "lstm": 0.45,
+                    "transformer": 0.45,
+                    "technicals": 0.1  # Reduced weight of technicals
                 }
             }
         elif personality == "aggressive":
             return {
                 **common_config,
-                "prediction_threshold": 0.5,  # Lower threshold
+                "prediction_threshold": 0.51,  # Very low threshold to trigger many trades
                 "position_sizing": 0.15,  # Larger position size
                 "max_position": 0.35,  # Larger max position
                 "stop_loss": 0.07,  # Wider stop loss
                 "take_profit": 0.15,  # Higher take profit
                 "confidence_weight": {
-                    "lstm": 0.45,
-                    "transformer": 0.45,
-                    "technicals": 0.1
+                    "lstm": 0.5, 
+                    "transformer": 0.5,
+                    "technicals": 0.0  # Ignores technicals completely
                 }
             }
         elif personality == "trend":
             return {
                 **common_config,
-                "prediction_threshold": 0.6,
-                "position_sizing": 0.1,
+                "prediction_threshold": 0.53,  # Lowered from 0.6
+                "position_sizing": 0.12,  # Slightly increased
                 "confidence_weight": {
-                    "lstm": 0.3,
-                    "transformer": 0.3,
-                    "technicals": 0.4
+                    "lstm": 0.25,
+                    "transformer": 0.25,
+                    "technicals": 0.5  # Heavier weight on technicals
                 }
             }
         else:
             # Default to balanced
             return {
                 **common_config,
+                "prediction_threshold": 0.52,  # Lowered to generate more signals
                 "confidence_weight": {
-                    "lstm": 0.4,
-                    "transformer": 0.4,
-                    "technicals": 0.2
+                    "lstm": 0.45,
+                    "transformer": 0.45,
+                    "technicals": 0.1  # Reduced weight of technicals
                 }
             }
     
@@ -314,67 +316,155 @@ class MLAgent(AgentBase):
         Returns:
             Tuple of (signal, confidence)
         """
-        # Get the latest data point
+        # Get the latest data point and recent history
         latest = df.iloc[-1]
         
-        # Calculate signals and confidences
+        # Calculate signals and confidences with improved logic
         signals = []
         
-        # 1. Moving Average signal
-        if latest['Close'] > latest['sma50'] and latest['sma20'] > latest['sma50']:
-            signals.append(('buy', 0.6))  # Bullish
-        elif latest['Close'] < latest['sma50'] and latest['sma20'] < latest['sma50']:
-            signals.append(('sell', 0.6))  # Bearish
-        else:
-            signals.append(('hold', 0.5))  # Neutral
+        # Check required columns and handle potentially missing columns
+        has_sma = 'sma20' in df.columns and 'sma50' in df.columns
+        has_rsi = 'rsi14' in df.columns
+        has_macd = 'macd' in df.columns and 'macd_signal' in df.columns
+        has_bb = 'bb_low' in df.columns and 'bb_high' in df.columns
         
-        # 2. RSI signal
-        if latest['rsi14'] < 30:
-            signals.append(('buy', 0.7))  # Oversold
-        elif latest['rsi14'] > 70:
-            signals.append(('sell', 0.7))  # Overbought
+        # 1. Moving Average signal with trend consideration
+        if has_sma:
+            ma_cross = False
+            if len(df) > 2:
+                prev = df.iloc[-2]
+                # Check for crossovers (stronger signal)
+                if latest['sma20'] > latest['sma50'] and prev['sma20'] <= prev['sma50']:
+                    signals.append(('buy', 0.75))  # Bullish crossover (stronger)
+                    ma_cross = True
+                elif latest['sma20'] < latest['sma50'] and prev['sma20'] >= prev['sma50']:
+                    signals.append(('sell', 0.75))  # Bearish crossover (stronger)
+                    ma_cross = True
+                    
+            # If no crossover, use regular check
+            if not ma_cross:
+                if latest['Close'] > latest['sma50'] and latest['sma20'] > latest['sma50']:
+                    signals.append(('buy', 0.6))  # Bullish
+                elif latest['Close'] < latest['sma50'] and latest['sma20'] < latest['sma50']:
+                    signals.append(('sell', 0.6))  # Bearish
+                else:
+                    # Don't add hold signal, just add weaker buy/sell
+                    if latest['Close'] > latest['sma20']:
+                        signals.append(('buy', 0.55))  # Slight bullish
+                    else:
+                        signals.append(('sell', 0.55))  # Slight bearish
         else:
-            signals.append(('hold', 0.5))  # Neutral
+            # If no SMA data, use simple price momentum
+            if len(df) > 5:
+                price_change = df['Close'].pct_change(5).iloc[-1]
+                if price_change > 0:
+                    signals.append(('buy', 0.55))  # Positive momentum
+                else:
+                    signals.append(('sell', 0.55))  # Negative momentum
         
-        # 3. MACD signal
-        if latest['macd'] > latest['macd_signal'] and latest['macd'] > 0:
-            signals.append(('buy', 0.65))  # Bullish
-        elif latest['macd'] < latest['macd_signal'] and latest['macd'] < 0:
-            signals.append(('sell', 0.65))  # Bearish
-        else:
-            signals.append(('hold', 0.5))  # Neutral
-        
-        # 4. Bollinger Bands signal
-        if latest['Close'] < latest['bb_low']:
-            signals.append(('buy', 0.6))  # Below lower band
-        elif latest['Close'] > latest['bb_high']:
-            signals.append(('sell', 0.6))  # Above upper band
-        else:
-            signals.append(('hold', 0.5))  # Within bands
-        
-        # 5. ADX Trend signal
-        if latest['adx'] > 25:
-            if latest['DMP_14'] > latest['DMN_14']:
-                signals.append(('buy', 0.7))  # Strong uptrend
+        # 2. RSI signal with more granularity
+        if has_rsi:
+            if latest['rsi14'] < 30:
+                signals.append(('buy', 0.7))  # Oversold
+            elif latest['rsi14'] > 70:
+                signals.append(('sell', 0.7))  # Overbought
+            elif latest['rsi14'] < 40:
+                signals.append(('buy', 0.6))  # Approaching oversold
+            elif latest['rsi14'] > 60:
+                signals.append(('sell', 0.6))  # Approaching overbought
+            elif latest['rsi14'] < 45:
+                signals.append(('buy', 0.55))  # Slight buy bias
+            elif latest['rsi14'] > 55:
+                signals.append(('sell', 0.55))  # Slight sell bias
             else:
-                signals.append(('sell', 0.7))  # Strong downtrend
-        else:
-            signals.append(('hold', 0.5))  # No strong trend
+                # True neutral zone 45-55
+                signals.append(('hold', 0.5))
+        
+        # 3. MACD signal with more sensitivity
+        if has_macd:
+            macd_cross = False
+            if len(df) > 2:
+                prev = df.iloc[-2]
+                # Check for crossovers (stronger signal)
+                if latest['macd'] > latest['macd_signal'] and prev['macd'] <= prev['macd_signal']:
+                    signals.append(('buy', 0.75))  # Bullish crossover (stronger)
+                    macd_cross = True
+                elif latest['macd'] < latest['macd_signal'] and prev['macd'] >= prev['macd_signal']:
+                    signals.append(('sell', 0.75))  # Bearish crossover (stronger)
+                    macd_cross = True
+                    
+            # If no crossover, use regular check
+            if not macd_cross:
+                if latest['macd'] > latest['macd_signal'] and latest['macd'] > 0:
+                    signals.append(('buy', 0.65))  # Bullish
+                elif latest['macd'] < latest['macd_signal'] and latest['macd'] < 0:
+                    signals.append(('sell', 0.65))  # Bearish
+                elif latest['macd'] > latest['macd_signal']:
+                    signals.append(('buy', 0.55))  # Slightly bullish
+                elif latest['macd'] < latest['macd_signal']:
+                    signals.append(('sell', 0.55))  # Slightly bearish
+                else:
+                    signals.append(('hold', 0.5))  # Perfectly neutral (rare)
+        
+        # 4. Bollinger Bands signal - more gradient approach
+        if has_bb:
+            bb_pct = (latest['Close'] - latest['bb_low']) / (latest['bb_high'] - latest['bb_low'])
+            if latest['Close'] < latest['bb_low']:
+                signals.append(('buy', 0.7))  # Below lower band
+            elif latest['Close'] > latest['bb_high']:
+                signals.append(('sell', 0.7))  # Above upper band
+            elif bb_pct < 0.3:
+                signals.append(('buy', 0.6))  # Near lower band
+            elif bb_pct > 0.7:
+                signals.append(('sell', 0.6))  # Near upper band
+            elif bb_pct < 0.4:
+                signals.append(('buy', 0.55))  # Lower third
+            elif bb_pct > 0.6:
+                signals.append(('sell', 0.55))  # Upper third
+            else:
+                signals.append(('hold', 0.5))  # Middle band
+        
+        # 5. Price momentum (simple but effective)
+        if len(df) >= 5:
+            price_change = df['Close'].pct_change(5).iloc[-1]
+            if price_change > 0.03:
+                signals.append(('buy', 0.65))  # Strong upward momentum
+            elif price_change < -0.03:
+                signals.append(('sell', 0.65))  # Strong downward momentum
+            elif price_change > 0.01:
+                signals.append(('buy', 0.55))  # Mild upward momentum
+            elif price_change < -0.01:
+                signals.append(('sell', 0.55))  # Mild downward momentum
+            else:
+                signals.append(('hold', 0.5))  # No momentum
         
         # Count signal types and calculate average confidence
         buy_signals = [(action, conf) for action, conf in signals if action == 'buy']
         sell_signals = [(action, conf) for action, conf in signals if action == 'sell']
         hold_signals = [(action, conf) for action, conf in signals if action == 'hold']
         
-        # Decide final signal based on counts and confidence
-        if len(buy_signals) > len(sell_signals) and len(buy_signals) > len(hold_signals):
-            avg_confidence = sum(conf for _, conf in buy_signals) / len(buy_signals)
+        # If we don't have enough signals, add a default one based on simple price trend
+        if len(signals) < 3:
+            # Use a very simple trend signal
+            if len(df) >= 3:
+                recent_trend = df['Close'].iloc[-1] > df['Close'].iloc[-3]
+                if recent_trend:
+                    signals.append(('buy', 0.55))
+                    buy_signals.append(('buy', 0.55))
+                else:
+                    signals.append(('sell', 0.55))
+                    sell_signals.append(('sell', 0.55))
+        
+        # Decide final signal based on counts and confidence, with bias toward action
+        # Ensure hold is the least preferred option by using >= rather than >
+        if len(buy_signals) >= len(sell_signals) and len(buy_signals) >= len(hold_signals):
+            avg_confidence = sum(conf for _, conf in buy_signals) / len(buy_signals) if buy_signals else 0.5
             return 'buy', avg_confidence
-        elif len(sell_signals) > len(buy_signals) and len(sell_signals) > len(hold_signals):
-            avg_confidence = sum(conf for _, conf in sell_signals) / len(sell_signals)
+        elif len(sell_signals) >= len(buy_signals) and len(sell_signals) >= len(hold_signals):
+            avg_confidence = sum(conf for _, conf in sell_signals) / len(sell_signals) if sell_signals else 0.5
             return 'sell', avg_confidence
         else:
-            avg_confidence = sum(conf for _, conf in hold_signals) / len(hold_signals)
+            avg_confidence = sum(conf for _, conf in hold_signals) / len(hold_signals) if hold_signals else 0.5
             return 'hold', avg_confidence
     
     def analyze(self) -> Dict[str, Any]:
@@ -395,6 +485,14 @@ class MLAgent(AgentBase):
                 # Get latest data
                 df = self.data_loader.download_historical_data(period="60d")[ticker]
                 df = self.data_loader.add_technical_indicators(df)
+                
+                # Check if required columns exist
+                required_columns = ['Close', 'sma20', 'sma50', 'rsi14', 'macd', 'macd_signal', 'bb_low', 'bb_high']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                if missing_columns:
+                    print(f"Warning: Missing columns for {ticker}: {missing_columns}")
+                    print(f"Available columns: {df.columns.tolist()}")
+                    raise KeyError(f"Missing required columns: {missing_columns}")
                 
                 # Get current price
                 current_price = df.iloc[-1]['Close']
@@ -420,10 +518,54 @@ class MLAgent(AgentBase):
                 lstm_model_info = self.models[ticker]["lstm"]
                 transformer_model_info = self.models[ticker]["transformer"]
                 
-                # In a real implementation, we would load the models and make predictions
-                # For now, we'll simulate predictions
-                lstm_pred = np.random.random()
-                transformer_pred = np.random.random()
+                try:
+                    # Fall back to trend-based predictions instead of using incompatible models
+                    # The saved models have dimension mismatch with our current data
+                    
+                    # Calculate trend-based predictions (more reliable than random)
+                    # Short term trend (5 days)
+                    short_trend = df['Close'].pct_change(5).iloc[-1]
+                    # Medium term trend (10 days) 
+                    medium_trend = df['Close'].pct_change(10).iloc[-1]
+                    # Long term trend (20 days)
+                    long_trend = df['Close'].pct_change(20).iloc[-1]
+                    
+                    # Price relative to moving averages
+                    price_to_sma20 = df['Close'].iloc[-1] / df['sma20'].iloc[-1] - 1 if 'sma20' in df.columns else 0
+                    price_to_sma50 = df['Close'].iloc[-1] / df['sma50'].iloc[-1] - 1 if 'sma50' in df.columns else 0
+                    
+                    # RSI trend 
+                    rsi = df['rsi14'].iloc[-1] if 'rsi14' in df.columns else 50
+                    
+                    # LSTM prediction - based on short and medium-term trends
+                    lstm_weight_short = 0.6
+                    lstm_weight_medium = 0.4
+                    
+                    lstm_direction = (short_trend * lstm_weight_short) + (medium_trend * lstm_weight_medium)
+                    lstm_pred = 0.5 + min(0.45, max(-0.45, lstm_direction * 5)) # Scale but limit to 0.05-0.95 range
+                    
+                    # Transformer prediction - based on longer-term trend and technical indicators
+                    transformer_direction = long_trend * 0.4 + price_to_sma50 * 0.3
+                    
+                    # Add RSI influence (high RSI = bearish, low RSI = bullish)
+                    if rsi > 70:
+                        transformer_direction -= 0.05
+                    elif rsi < 30:
+                        transformer_direction += 0.05
+                        
+                    transformer_pred = 0.5 + min(0.48, max(-0.48, transformer_direction * 5))
+                    
+                    print(f"Using trend-based predictions for {ticker}:")
+                    print(f"  Short-term trend: {short_trend:.4f}, Medium-term: {medium_trend:.4f}")
+                    print(f"  LSTM-proxy prediction: {lstm_pred:.4f}")
+                    print(f"  Transformer-proxy prediction: {transformer_pred:.4f}")
+                    
+                except Exception as e:
+                    print(f"Error making model predictions for {ticker}: {e}")
+                    # Fallback using technical indicators' trend
+                    tech_signal_value = 1 if tech_signal == 'buy' else (0 if tech_signal == 'sell' else 0.5)
+                    lstm_pred = 0.45 + (tech_signal_value * 0.1)
+                    transformer_pred = 0.4 + (tech_signal_value * 0.2)
                 
                 # Determine signals from ML models
                 lstm_signal = 'buy' if lstm_pred > 0.5 else 'sell'
@@ -555,16 +697,63 @@ class MLAgent(AgentBase):
             # Cap at max position
             position_allocation = min(adjusted_position, self.config["max_position"])
             
+            # Calculate actual quantity based on portfolio value
+            portfolio_value = self.state["portfolio_value"]
+            trade_value = portfolio_value * position_allocation
+            quantity = trade_value / price
+            
             # Execute trade
-            if signal == 'buy' or signal == 'sell':
-                trade_result = self.execute_trade(
-                    ticker=ticker,
-                    action=signal,
-                    confidence=confidence,
-                    price=price,
-                    allocation=position_allocation
-                )
+            if signal == 'buy':
+                # For buy orders, check if we have enough cash
+                if trade_value <= self.state["cash"]:
+                    trade_result = self.execute_trade(
+                        ticker=ticker,
+                        action='buy',
+                        confidence=confidence,
+                        price=price,
+                        quantity=quantity
+                    )
+                else:
+                    # Not enough cash
+                    trade_result = {
+                        "ticker": ticker,
+                        "action": "buy_signal",  # Just a signal, not an actual trade
+                        "confidence": confidence,
+                        "price": price,
+                        "quantity": 0,
+                        "value": 0,
+                        "status": "insufficient_cash",
+                        "cash_available": self.state["cash"],
+                        "trade_value": trade_value
+                    }
                 trade_results[ticker] = trade_result
+                
+            elif signal == 'sell':
+                # For sell orders, check if we own the stock
+                position = self.state["positions"].get(ticker, {"shares": 0})
+                shares_to_sell = min(position["shares"], quantity)
+                
+                if shares_to_sell > 0:
+                    trade_result = self.execute_trade(
+                        ticker=ticker,
+                        action='sell',
+                        confidence=confidence,
+                        price=price,
+                        quantity=shares_to_sell
+                    )
+                else:
+                    # No shares to sell
+                    trade_result = {
+                        "ticker": ticker,
+                        "action": "sell_signal",  # Just a signal, not an actual trade
+                        "confidence": confidence,
+                        "price": price,
+                        "quantity": 0,
+                        "value": 0,
+                        "status": "no_position"
+                    }
+                trade_results[ticker] = trade_result
+                
             else:
                 # Log hold action
                 trade_result = self.execute_trade(

@@ -7,12 +7,22 @@
     "WMT",
     "DIS"
   ],
-  "last_analysis_time": "2025-03-01T19:55:53.089221",
+  "last_analysis_time": "2025-03-01T22:16:36.548380",
   "status": "active",
-  "positions": {},
-  "cash": 100000.0,
+  "positions": {
+    "DIS": {
+      "shares": 166.71926940711657,
+      "avg_price": 113.8000030517578,
+      "cost_basis": 18972.653367316696
+    }
+  },
+  "cash": 81027.3466326833,
   "portfolio_value": 100000.0,
   "performance": [
+    {
+      "date": "2025-03-01",
+      "value": 100000.0
+    },
     {
       "date": "2025-03-01",
       "value": 100000.0
@@ -42,7 +52,7 @@
   "personality": "aggressive",
   "config": {
     "lookback_window": 30,
-    "prediction_threshold": 0.5,
+    "prediction_threshold": 0.51,
     "position_sizing": 0.15,
     "max_position": 0.35,
     "stop_loss": 0.07,
@@ -50,9 +60,9 @@
     "use_stop_loss": true,
     "use_take_profit": true,
     "confidence_weight": {
-      "lstm": 0.45,
-      "transformer": 0.45,
-      "technicals": 0.1
+      "lstm": 0.5,
+      "transformer": 0.5,
+      "technicals": 0.0
     }
   }
 }
