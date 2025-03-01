@@ -1,1 +1,0 @@
-# Financial analysis package initialization

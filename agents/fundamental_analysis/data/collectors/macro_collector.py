@@ -1,7 +1,3 @@
-"""
-Macroeconomic data collector.
-"""
-
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
@@ -14,53 +10,36 @@ logger = logging.getLogger("stock_analyzer.data.collectors.macro")
 
 
 class MacroCollector:
-    """
-    Collects macroeconomic data from sources like FRED.
-    """
     
     def __init__(self):
-        """Initialize the MacroCollector."""
         self.db_ops = db_ops
         self.fred_api_key = FRED_API_KEY
         
-        # Initialize FRED API client if API key is available
         self.fred = None
         if self.fred_api_key:
             self.fred = Fred(api_key=self.fred_api_key)
         
-        # Macro indicators collection
         self.collection_name = "macro_indicators"
         
-        # Define common economic indicators
         self.indicators = {
-            "GDP": "GDP",                     # Real Gross Domestic Product
-            "UNRATE": "UNRATE",               # Unemployment Rate
-            "CPIAUCSL": "CPIAUCSL",           # Consumer Price Index for All Urban Consumers
-            "FEDFUNDS": "FEDFUNDS",           # Federal Funds Effective Rate
-            "M2SL": "M2SL",                   # M2 Money Stock
-            "INDPRO": "INDPRO",               # Industrial Production Index
-            "HOUST": "HOUST",                 # Housing Starts
-            "T10Y2Y": "T10Y2Y",               # 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity
-            "DCOILWTICO": "DCOILWTICO",       # Crude Oil Prices: West Texas Intermediate (WTI)
-            "VIXCLS": "VIXCLS",               # CBOE Volatility Index: VIX
+            "GDP": "GDP",
+            "UNRATE": "UNRATE",
+            "CPIAUCSL": "CPIAUCSL",
+            "FEDFUNDS": "FEDFUNDS",
+            "M2SL": "M2SL",
+            "INDPRO": "INDPRO",
+            "HOUST": "HOUST",
+            "T10Y2Y": "T10Y2Y",
+            "DCOILWTICO": "DCOILWTICO",
+            "VIXCLS": "VIXCLS",
         }
     
     def collect_macro_data(self, force_update=False):
-        """
-        Collect macroeconomic data for common indicators.
-        
-        Args:
-            force_update (bool, optional): Whether to force an update even if recent data exists. Defaults to False.
-            
-        Returns:
-            bool: True if the operation was successful, False otherwise.
-        """
         try:
             if not self.fred:
                 logger.error("FRED API key is not available")
                 return False
             
-            # Check if we already have recent data
             if not force_update:
                 latest_data = self.db_ops.find_one(
                     self.collection_name,
@@ -72,7 +51,6 @@ class MacroCollector:
                     logger.info("Recent macroeconomic data already exists, skipping collection")
                     return True
             
-            # Collect data for each indicator
             all_successful = True
             for indicator_id, series_id in self.indicators.items():
                 success = self._collect_indicator(indicator_id, series_id)
@@ -86,24 +64,12 @@ class MacroCollector:
             return False
     
     def _collect_indicator(self, indicator_id, series_id):
-        """
-        Collect data for a specific indicator.
-        
-        Args:
-            indicator_id (str): The identifier for the indicator.
-            series_id (str): The FRED series ID.
-            
-        Returns:
-            bool: True if the operation was successful, False otherwise.
-        """
         try:
             logger.info(f"Collecting data for indicator: {indicator_id} (Series: {series_id})")
             
-            # Get data from FRED
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=365 * 10)  # 10 years of data
+            start_date = end_date - timedelta(days=365 * 10)
             
-            # Get the data
             series = self.fred.get_series(
                 series_id,
                 observation_start=start_date.strftime("%Y-%m-%d"),
@@ -114,18 +80,14 @@ class MacroCollector:
                 logger.warning(f"No data available for indicator {indicator_id}")
                 return False
             
-            # Convert to DataFrame for easier processing
             df = pd.DataFrame(series)
             df.reset_index(inplace=True)
             df.columns = ["date", "value"]
             
-            # Convert to records
             records = df.to_dict("records")
             
-            # Get metadata about the indicator
             series_info = self.fred.get_series_info(series_id)
             
-            # Store records in MongoDB
             for record in records:
                 macro_record = {
                     "indicator_id": indicator_id,
@@ -139,7 +101,6 @@ class MacroCollector:
                     "last_updated": datetime.utcnow()
                 }
                 
-                # Insert or update the record
                 self.db_ops.update_one(
                     self.collection_name,
                     {
@@ -158,25 +119,12 @@ class MacroCollector:
             return False
     
     def get_indicator_data(self, indicator_id, start_date=None, end_date=None):
-        """
-        Get data for a specific indicator within a date range.
-        
-        Args:
-            indicator_id (str): The identifier for the indicator.
-            start_date (datetime, optional): The start date. Defaults to 1 year ago.
-            end_date (datetime, optional): The end date. Defaults to today.
-            
-        Returns:
-            list: The indicator data.
-        """
         try:
-            # Set default dates if not provided
             if end_date is None:
                 end_date = datetime.now()
             if start_date is None:
                 start_date = end_date - timedelta(days=365)
             
-            # Query MongoDB for the indicator data
             query = {
                 "indicator_id": indicator_id,
                 "date": {"$gte": start_date, "$lte": end_date}
@@ -195,12 +143,6 @@ class MacroCollector:
             return []
     
     def get_latest_indicators(self):
-        """
-        Get the latest values for all tracked indicators.
-        
-        Returns:
-            dict: The latest indicator values.
-        """
         try:
             latest_indicators = {}
             

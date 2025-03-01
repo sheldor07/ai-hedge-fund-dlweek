@@ -1,7 +1,3 @@
-"""
-CLI runner for technical analysis agents.
-"""
-
 import os
 import sys
 import argparse
@@ -9,14 +5,11 @@ from typing import List
 import time
 from datetime import datetime
 
-# Add parent directory to path for relative imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-# Import local modules
 from agents.ml_agent import MLAgent
 from data.data_loader import DataLoader
 
-# Default configuration
 DEFAULT_TICKERS = ["AMZN", "NVDA", "MU", "WMT", "DIS"]
 DEFAULT_PERSONALITIES = ["conservative", "balanced", "aggressive", "trend"]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,48 +18,37 @@ LOGS_DIR = os.path.join(BASE_DIR, "logs")
 CACHE_DIR = os.path.join(BASE_DIR, "cache")
 
 def parse_args():
-    """Parse command line arguments"""
     parser = argparse.ArgumentParser(description="Technical Analysis Agent Runner")
     
-    # Subparsers for different commands
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     
-    # Train command
     train_parser = subparsers.add_parser("train", help="Train agent models")
     train_parser.add_argument("--agent", type=str, help="Agent ID to train (default: all)")
     train_parser.add_argument("--force", action="store_true", help="Force retrain even if models exist")
     
-    # Run command
     run_parser = subparsers.add_parser("run", help="Run agent analysis and trading")
     run_parser.add_argument("--agent", type=str, help="Agent ID to run (default: all)")
     
-    # Analyze command
     analyze_parser = subparsers.add_parser("analyze", help="Analyze tickers without trading")
     analyze_parser.add_argument("--agent", type=str, help="Agent ID to use (default: balanced)")
     analyze_parser.add_argument("--ticker", type=str, help="Ticker to analyze (default: all)")
     
-    # Status command
     status_parser = subparsers.add_parser("status", help="Show agent status")
     status_parser.add_argument("--agent", type=str, help="Agent ID to show (default: all)")
     
-    # General options
     parser.add_argument("--tickers", type=str, nargs="+", default=DEFAULT_TICKERS, 
                         help="Stock tickers to analyze")
     
     return parser.parse_args()
 
 def create_agents(tickers: List[str], agent_id: str = None) -> dict:
-    """Create agent instances"""
     agents = {}
     
-    # Create directories
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(LOGS_DIR, exist_ok=True)
     os.makedirs(CACHE_DIR, exist_ok=True)
     
-    # Create requested agent or all agents
     if agent_id:
-        # Extract personality from agent_id
         if "_agent" in agent_id:
             personality = agent_id.replace("_agent", "")
         else:
@@ -85,7 +67,6 @@ def create_agents(tickers: List[str], agent_id: str = None) -> dict:
             data_cache_dir=CACHE_DIR
         )
     else:
-        # Create all personality types
         for personality in DEFAULT_PERSONALITIES:
             agent_id = f"{personality}_agent"
             agents[agent_id] = MLAgent(
@@ -100,7 +81,6 @@ def create_agents(tickers: List[str], agent_id: str = None) -> dict:
     return agents
 
 def run_training(agents: dict, force_retrain: bool = False):
-    """Run model training for all agents"""
     print(f"Training models for {len(agents)} agents...")
     start_time = time.time()
     
@@ -116,7 +96,6 @@ def run_training(agents: dict, force_retrain: bool = False):
     print(f"\nTotal training time: {elapsed_time:.2f} seconds")
 
 def run_agents(agents: dict):
-    """Run all agents for analysis and trading"""
     print(f"Running {len(agents)} agents...")
     start_time = time.time()
     
@@ -125,11 +104,9 @@ def run_agents(agents: dict):
         try:
             results = agent.run()
             
-            # Print portfolio summary with performance metrics
             portfolio = results["portfolio"]
             
-            # Calculate profit/loss (P&L) and return
-            initial_value = 100000.00  # Starting value
+            initial_value = 100000.00
             p_l = portfolio['value'] - initial_value
             percent_return = (p_l / initial_value) * 100
             
@@ -152,7 +129,6 @@ def run_agents(agents: dict):
             else:
                 print("  No positions")
                 
-            # Print trade summary
             print("\nTrades:")
             for ticker, trade in results["trades"].items():
                 if trade["action"] == "hold":
@@ -175,7 +151,6 @@ def run_agents(agents: dict):
     print(f"\nTotal execution time: {elapsed_time:.2f} seconds")
 
 def analyze_tickers(agents: dict, ticker: str = None):
-    """Analyze tickers without trading"""
     print(f"Analyzing {'all tickers' if ticker is None else ticker}...")
     
     for agent_id, agent in agents.items():
@@ -183,7 +158,6 @@ def analyze_tickers(agents: dict, ticker: str = None):
         try:
             results = agent.analyze()
             
-            # Filter by ticker if specified
             if ticker:
                 if ticker in results and results[ticker]["status"] == "success":
                     ticker_result = results[ticker]
@@ -197,7 +171,6 @@ def analyze_tickers(agents: dict, ticker: str = None):
                 else:
                     print(f"No analysis available for {ticker}")
             else:
-                # Show all tickers
                 for ticker, ticker_result in results.items():
                     if ticker_result["status"] == "success":
                         print(f"Analysis for {ticker}:")
@@ -209,40 +182,35 @@ def analyze_tickers(agents: dict, ticker: str = None):
             print(f"Error analyzing with {agent_id}: {e}")
 
 def show_status(agents: dict):
-    """Show agent status with performance metrics"""
     print("\nAgent Status and Performance:")
     print("-" * 100)
     header = f"{'Agent ID':<15} {'Status':<10} {'Portfolio Value':<15} {'Cash':<15} {'P&L':<15} {'Return %':<10} {'Positions'}"
     print(header)
     print("-" * 100)
     
-    initial_value = 100000.00  # Starting value
+    initial_value = 100000.00
     
     for agent_id, agent in agents.items():
         status = agent.get_status()
         
-        # Calculate P&L and return
         p_l = status['portfolio_value'] - initial_value
         percent_return = (p_l / initial_value) * 100
         
-        # Format positions string
         if status["positions"]:
             positions_str = ", ".join([f"{t}: {p['shares']:.1f}" for t, p in status["positions"].items()])
         else:
             positions_str = "None"
         
-        # Print row with performance metrics
         print(f"{agent_id:<15} {status['status']:<10} " +
               f"${status['portfolio_value']:<14.2f} ${status['cash']:<14.2f} " +
               f"${p_l:<14.2f} {percent_return:<9.2f}% {positions_str}")
     
     print("-" * 100)
     
-    # Check if there's performance history to display
     has_performance = False
     for agent_id, agent in agents.items():
         status = agent.get_status()
-        if "performance" in status and len(status["performance"]) > 1:  # Need at least 2 points for history
+        if "performance" in status and len(status["performance"]) > 1:
             has_performance = True
             break
     
@@ -250,7 +218,6 @@ def show_status(agents: dict):
         print("\nPerformance History:")
         print("-" * 80)
         
-        # Find all dates across all agents
         all_dates = set()
         for agent_id, agent in agents.items():
             status = agent.get_status()
@@ -260,13 +227,11 @@ def show_status(agents: dict):
         
         all_dates = sorted(list(all_dates))
         
-        # Print header
         date_header = f"{'Date':<12}"
         agent_headers = " ".join([f"{agent_id[:10]:<15}" for agent_id in agents.keys()])
         print(f"{date_header} {agent_headers}")
         print("-" * 80)
         
-        # Print value for each date and agent
         for date in all_dates:
             row = f"{date:<12}"
             
@@ -290,19 +255,15 @@ def show_status(agents: dict):
         print("-" * 80)
 
 def main():
-    """Main entry point"""
     args = parse_args()
     
-    # Create agents
     agents = create_agents(args.tickers, args.agent)
     
-    # Execute requested command
     if args.command == "train":
         run_training(agents, args.force)
     elif args.command == "run":
         run_agents(agents)
     elif args.command == "analyze":
-        # Use balanced agent if not specified
         if args.agent is None and len(agents) > 1:
             balanced_agent = {"balanced_agent": agents["balanced_agent"]}
             analyze_tickers(balanced_agent, args.ticker)
@@ -311,7 +272,6 @@ def main():
     elif args.command == "status":
         show_status(agents)
     else:
-        # Default to showing status
         show_status(agents)
         print("\nUse --help to see available commands")
 
