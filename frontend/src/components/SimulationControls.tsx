@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import {
@@ -6,7 +6,11 @@ import {
   pauseSimulation,
   setSimulationSpeed,
   setFocusedEntity,
+  fastForwardToNextDay,
+  fastForwardToNextWeekday,
+  DAILY_SCHEDULE
 } from '../store/simulationSlice';
+import { TimeOfDayPeriod } from '../models/types';
 
 const SimulationControls: React.FC = () => {
   const dispatch = useDispatch();
@@ -21,13 +25,50 @@ const SimulationControls: React.FC = () => {
     }
   };
 
-  const handleSpeedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const speed = parseFloat(event.target.value);
+  const handleSpeedChange = (speed: number) => {
     dispatch(setSimulationSpeed(speed));
   };
 
   const handleResetFocus = () => {
     dispatch(setFocusedEntity({ type: null, id: null }));
+  };
+
+  const handleSkipToNextDay = () => {
+    dispatch(fastForwardToNextDay());
+  };
+
+  const handleSkipToNextWeekday = () => {
+    dispatch(fastForwardToNextWeekday());
+  };
+
+  // Format the current date and time
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
+  // Get the description for the current time period
+  const getPeriodDescription = (periodType: TimeOfDayPeriod): string => {
+    const period = DAILY_SCHEDULE.find(p => p.periodType === periodType);
+    return period ? period.description : '';
+  };
+
+  // Get days remaining in simulation
+  const getDaysRemaining = (): number => {
+    const currentTime = simulation.currentDate.getTime();
+    const endTime = simulation.simulationEndDate.getTime();
+    return Math.ceil((endTime - currentTime) / (1000 * 60 * 60 * 24));
   };
 
   return (
@@ -36,83 +77,177 @@ const SimulationControls: React.FC = () => {
         position: 'absolute',
         bottom: '10px',
         right: '10px',
-        background: 'rgba(255, 255, 255, 0.8)',
-        padding: '10px',
-        borderRadius: '5px',
+        background: 'rgba(255, 255, 255, 0.9)',
+        padding: '15px',
+        borderRadius: '8px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px',
+        gap: '12px',
         zIndex: 100,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        width: '300px',
       }}
     >
-      <div>
+      {/* Date and Time Display */}
+      <div style={{ 
+        textAlign: 'center', 
+        borderBottom: '1px solid #e0e0e0',
+        paddingBottom: '8px',
+        marginBottom: '8px'
+      }}>
+        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+          {formatDate(simulation.currentDate)}
+        </div>
+        <div style={{ fontSize: '20px', color: '#1976d2', fontWeight: 'bold' }}>
+          {formatTime(simulation.currentDate)}
+        </div>
+        <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
+          {getPeriodDescription(simulation.currentTimeOfDay)}
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '3px' }}>
+          Day {Math.floor((simulation.currentDate.getTime() - simulation.simulationStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1} of 365 ({getDaysRemaining()} days remaining)
+        </div>
+      </div>
+
+      {/* Playback Controls */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
         <button
           onClick={handleStartPause}
           style={{
-            padding: '5px 10px',
+            padding: '8px 15px',
             backgroundColor: simulation.isRunning ? '#f44336' : '#4caf50',
             color: 'white',
             border: 'none',
-            borderRadius: '3px',
+            borderRadius: '4px',
             cursor: 'pointer',
-            marginRight: '10px',
+            fontWeight: 'bold',
+            flex: 1,
           }}
         >
-          {simulation.isRunning ? 'Pause' : 'Start'}
+          {simulation.isRunning ? 'PAUSE' : 'PLAY'}
         </button>
         
-        {focusedEntity.id && (
+        <button
+          onClick={handleSkipToNextDay}
+          style={{
+            padding: '8px 15px',
+            backgroundColor: '#ff9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            flex: 1,
+          }}
+          title="Skip to Next Day"
+        >
+          +1 Day
+        </button>
+        
+        <button
+          onClick={handleSkipToNextWeekday}
+          style={{
+            padding: '8px 15px',
+            backgroundColor: '#ff5722',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            flex: 1,
+          }}
+          title="Skip to Next Weekday (Skip Weekends)"
+        >
+          +Weekend
+        </button>
+      </div>
+      
+      {/* Speed Controls */}
+      <div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          marginBottom: '5px'
+        }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Simulation Speed:</span>
+          <span style={{ 
+            fontSize: '16px', 
+            fontWeight: 'bold', 
+            color: '#1976d2',
+            backgroundColor: '#e3f2fd',
+            padding: '3px 8px',
+            borderRadius: '4px'
+          }}>
+            {simulation.speed}x
+          </span>
+        </div>
+        
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          gap: '5px'
+        }}>
+          {simulation.speedOptions.map(speed => (
+            <button
+              key={speed}
+              onClick={() => handleSpeedChange(speed)}
+              style={{
+                padding: '5px 0',
+                backgroundColor: simulation.speed === speed ? '#2196f3' : '#e0e0e0',
+                color: simulation.speed === speed ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                flex: 1,
+                fontWeight: simulation.speed === speed ? 'bold' : 'normal',
+              }}
+            >
+              {speed}x
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Focus Controls */}
+      {focusedEntity.id && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={handleResetFocus}
             style={{
-              padding: '5px 10px',
+              padding: '8px 15px',
               backgroundColor: '#2196f3',
               color: 'white',
               border: 'none',
-              borderRadius: '3px',
+              borderRadius: '4px',
               cursor: 'pointer',
+              width: '100%',
             }}
           >
-            Reset View
+            Reset Camera View
           </button>
-        )}
-      </div>
+        </div>
+      )}
       
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <span style={{ marginRight: '10px', fontSize: '14px' }}>Speed:</span>
-        <input
-          type="range"
-          min="0.1"
-          max="3"
-          step="0.1"
-          value={simulation.speed}
-          onChange={handleSpeedChange}
-          style={{ flex: 1 }}
-        />
-        <span style={{ marginLeft: '5px', fontSize: '14px' }}>{simulation.speed.toFixed(1)}x</span>
-      </div>
-      
-      <div style={{ fontSize: '12px', color: '#555' }}>
+      {/* Current Status */}
+      <div style={{ 
+        fontSize: '12px', 
+        color: '#555', 
+        backgroundColor: '#f5f5f5',
+        padding: '8px',
+        borderRadius: '4px',
+        marginTop: '5px'
+      }}>
         {focusedEntity.type && focusedEntity.id ? (
           <div>
-            Focused on: {focusedEntity.type} {focusedEntity.id}
+            <span style={{ fontWeight: 'bold' }}>Focused on:</span> {focusedEntity.type} {focusedEntity.id}
           </div>
         ) : (
-          <div>Simulation Time: {formatTime(simulation.simulationTime)}</div>
+          <div>
+            <span style={{ fontWeight: 'bold' }}>Status:</span> {simulation.isRunning ? 'Simulation running' : 'Simulation paused'}
+          </div>
         )}
       </div>
     </div>
   );
-};
-
-// Helper function to format simulation time
-const formatTime = (ms: number): string => {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
 export default SimulationControls;

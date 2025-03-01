@@ -1,14 +1,28 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState } from '../store/index';
 import { 
   updateSimulationTime, 
   updateDayNightCycle,
+  updateCurrentDate,
   addPerformanceMetric,
   addMarketEvent,
   removeMarketEvent,
-  PerformanceMetric
+  addCharacterEvent,
+  activateCharacterEvent,
+  completeCharacterEvent,
+  PerformanceMetric,
+  DAILY_SCHEDULE,
+  pauseSimulation
 } from '../store/simulationSlice';
+import { 
+  CharacterEvent, 
+  EventType, 
+  TimeOfDayPeriod,
+  CharacterType,
+  CharacterState,
+  DayType
+} from '../models/types';
 import { 
   addCharacter, 
   setCharacterTarget, 
@@ -17,11 +31,19 @@ import {
   addConversation,
   addActivityToHistory,
   Character,
-  updateCharacterRoom
+  updateCharacterRoom,
+  Position,
+  Target
 } from '../store/charactersSlice';
 import { addLogEntry } from '../store/activityLogSlice';
-import { Position, Target } from '../store/charactersSlice';
-import { CharacterType } from '../models/types';
+import { 
+  loadSimulatedEvents, 
+  getEventsForTimestamp, 
+  mapToMarketEvent, 
+  mapToActivityLogEntry,
+  SimulatedEvent,
+  SimulatedEventsData
+} from '../utils/simulationEventLoader';
 
 // Array of first names for random character generation
 const FIRST_NAMES = [
@@ -162,15 +184,191 @@ const generateRandomSkills = (type: CharacterType) => {
   return skills;
 };
 
+// Stock symbols for event generation
+const STOCKS = ['AMZN', 'NVDA', 'MU', 'WMT', 'DIS'];
+
+// Event content templates for different event types
+const EVENT_TEMPLATES: Record<TimeOfDayPeriod, Array<{ message: string; priority: number }>> = {
+  MORNING_BRIEFING: [
+    { message: "Today we need to watch {stock} closely. Earnings report is expected after market close.", priority: 3 },
+    { message: "I've prepared a fundamental analysis of {stock}'s last quarter performance.", priority: 2 },
+    { message: "Technical indicators for {stock} suggest possible volatility ahead.", priority: 2 },
+    { message: "The market is expecting strong guidance from {stock} today.", priority: 2 },
+    { message: "Our exposure to {stock} is currently at {num}%. Should we adjust?", priority: 3 },
+  ],
+  ANALYSIS_PHASE: [
+    { message: "{stock} is showing a bullish divergence on the 4-hour chart.", priority: 2 },
+    { message: "The inventory turnover for {stock} has improved by {num}% this quarter.", priority: 2 },
+    { message: "I've completed my analysis of {stock}'s balance sheet.", priority: 1 },
+    { message: "The competitive landscape for {stock} has changed significantly.", priority: 2 },
+    { message: "We should consider the impact of new regulations on {stock}.", priority: 2 },
+  ],
+  LUNCH_BREAK: [
+    { message: "Taking a quick lunch break while monitoring {stock}'s performance.", priority: 1 },
+    { message: "Reviewing {stock}'s morning activity over lunch.", priority: 1 },
+    { message: "Discussing {stock}'s market position with colleagues during lunch.", priority: 2 },
+  ],
+  STRATEGY_MEETING: [
+    { message: "Our models indicate {stock} is undervalued by approximately {num}%.", priority: 3 },
+    { message: "The correlation between {stock} and the sector index has weakened.", priority: 2 },
+    { message: "I propose we adjust our position sizing for {stock}.", priority: 3 },
+    { message: "The risk-reward ratio for {stock} has improved this week.", priority: 2 },
+    { message: "We need a hedging strategy for our {stock} position.", priority: 3 },
+  ],
+  TRADE_EXECUTION: [
+    { message: "Based on the analysis, let's increase our position in {stock} by {num}%.", priority: 4 },
+    { message: "Algorithm suggests reducing exposure to {stock} due to sector headwinds.", priority: 4 },
+    { message: "Initiating buy order for {stock} at market price.", priority: 4 },
+    { message: "Setting up a stop-loss for {stock} at {num} points below current price.", priority: 3 },
+  ],
+  END_OF_DAY_REVIEW: [
+    { message: "Reviewing today's performance for {stock}.", priority: 2 },
+    { message: "Preparing end-of-day report on {stock} positions.", priority: 2 },
+    { message: "Analyzing {stock}'s closing price action.", priority: 2 },
+    { message: "Documenting key {stock} developments for tomorrow.", priority: 2 },
+  ],
+  AFTER_HOURS: [
+    { message: "Monitoring after-hours trading activity for {stock}.", priority: 1 },
+    { message: "Reviewing international market impact on {stock}.", priority: 1 },
+    { message: "Preparing overnight analysis for {stock}.", priority: 1 },
+  ]
+};
+
+// Function to generate a random character event based on the time of day
+const generateRandomEvent = (
+  currentDate: Date, 
+  characters: any[], 
+  timeOfDay: TimeOfDayPeriod
+): CharacterEvent | null => {
+  // Don't generate events for after hours
+  if (timeOfDay === 'AFTER_HOURS') {
+    return null;
+  }
+  
+  // Get characters that aren't busy
+  const availableCharacters = characters.filter(char => 
+    char.state !== 'walking' && char.state !== 'talking'
+  );
+  
+  if (availableCharacters.length === 0) {
+    return null;
+  }
+  
+  // Select random characters for the event
+  const mainCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
+  
+  // Determine event type based on time of day and character type
+  let eventType: EventType;
+  
+  switch (timeOfDay) {
+    case 'MORNING_BRIEFING':
+      eventType = Math.random() > 0.3 ? 'DISCUSS' : 'ANALYZE';
+      break;
+    case 'ANALYSIS_PHASE':
+      eventType = Math.random() > 0.7 ? 'DISCUSS' : 'ANALYZE';
+      break;
+    case 'LUNCH_BREAK':
+      eventType = 'MOVE';
+      break;
+    case 'STRATEGY_MEETING':
+      eventType = Math.random() > 0.2 ? 'DISCUSS' : 'ANALYZE';
+      break;
+    case 'TRADE_EXECUTION':
+      eventType = Math.random() > 0.5 ? 'DECIDE' : 'ANALYZE';
+      break;
+    case 'END_OF_DAY_REVIEW':
+      eventType = Math.random() > 0.3 ? 'DISCUSS' : 'DECIDE';
+      break;
+    default:
+      eventType = 'MOVE';
+  }
+  
+  // Get participant IDs
+  const characterIds = [mainCharacter.id];
+  
+  // For discussion events, add a second character
+  if (eventType === 'DISCUSS' && availableCharacters.length > 1) {
+    const otherAvailableCharacters = availableCharacters.filter(char => char.id !== mainCharacter.id);
+    if (otherAvailableCharacters.length > 0) {
+      const secondCharacter = otherAvailableCharacters[Math.floor(Math.random() * otherAvailableCharacters.length)];
+      characterIds.push(secondCharacter.id);
+    }
+  }
+  
+  // Select a random stock
+  const stock = STOCKS[Math.floor(Math.random() * STOCKS.length)];
+  
+  // Generate message based on time of day and event type
+  let message = '';
+  let priority = 1;
+  
+  if (EVENT_TEMPLATES[timeOfDay]) {
+    const template = EVENT_TEMPLATES[timeOfDay][Math.floor(Math.random() * EVENT_TEMPLATES[timeOfDay].length)];
+    message = template.message
+      .replace('{stock}', stock)
+      .replace('{num}', (Math.floor(Math.random() * 20) + 1).toString());
+    priority = template.priority;
+  } else {
+    message = `Discussing ${stock} performance`;
+  }
+  
+  // Set event duration based on type
+  let duration = 0;
+  switch (eventType) {
+    case 'MOVE':
+      duration = 5000 + Math.random() * 5000;
+      break;
+    case 'ANALYZE':
+      duration = 10000 + Math.random() * 20000;
+      break;
+    case 'DISCUSS':
+      duration = 8000 + Math.random() * 12000;
+      break;
+    case 'DECIDE':
+      duration = 5000 + Math.random() * 10000;
+      break;
+  }
+  
+  // Create the event
+  return {
+    id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    timestamp: new Date(currentDate),
+    characterIds,
+    originRoom: mainCharacter.currentRoom,
+    eventType,
+    message,
+    duration,
+    relatedStock: stock,
+    priority,
+    completed: false
+  };
+};
+
 // Hook for simulation engine
+// Event to notify the app when a day is complete
+export const onDayComplete = new EventTarget();
+
 const useSimulationEngine = () => {
   const dispatch = useDispatch();
-  const { isRunning, speed, simulationTime, currentMarketEvents } = useSelector(
-    (state: RootState) => state.simulation
-  );
+  const { 
+    isRunning, 
+    speed, 
+    simulationTime, 
+    currentMarketEvents,
+    currentDate,
+    simulationStartDate,
+    simulationEndDate,
+    currentTimeOfDay,
+    pendingCharacterEvents,
+    activeCharacterEvents,
+    dayType
+  } = useSelector((state: RootState) => state.simulation);
+  
   const characters = useSelector((state: RootState) => state.characters.characters);
   
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
+  const [lastEventGenerationTime, setLastEventGenerationTime] = useState(0);
+  const lastDateRef = useRef<Date | null>(null);
   
   // Initialize simulation with characters
   const initializeSimulation = useCallback(() => {
@@ -575,41 +773,237 @@ const useSimulationEngine = () => {
     });
   }, [dispatch, characters]);
   
-  // Update simulation time
+  // Generate character events
+  const generateCharacterEvents = useCallback(() => {
+    // Only generate events during weekdays and active hours
+    if (dayType === 'WEEKEND' || currentTimeOfDay === 'AFTER_HOURS') {
+      return;
+    }
+    
+    // Check if we should generate a new event
+    const now = Date.now();
+    const elapsedSinceLastEvent = now - lastEventGenerationTime;
+    
+    // Generate events less frequently when many active events
+    const eventGenerationThreshold = Math.max(5000, 2000 + activeCharacterEvents.length * 2000);
+    
+    if (elapsedSinceLastEvent > eventGenerationThreshold && Math.random() < 0.3) {
+      // Try to generate a random event
+      const newEvent = generateRandomEvent(currentDate, characters, currentTimeOfDay);
+      
+      if (newEvent) {
+        dispatch(addCharacterEvent(newEvent));
+        setLastEventGenerationTime(now);
+        
+        // Log the event generation
+        dispatch(addLogEntry({
+          id: Math.random().toString(36).substr(2, 9),
+          timestamp: now,
+          characterId: newEvent.characterIds[0],
+          characterType: characters.find(c => c.id === newEvent.characterIds[0])?.type || 'analyst',
+          roomId: newEvent.originRoom,
+          actionType: newEvent.eventType === 'ANALYZE' 
+            ? 'analysis' 
+            : newEvent.eventType === 'DISCUSS' 
+              ? 'communication' 
+              : newEvent.eventType === 'DECIDE' 
+                ? 'decision' 
+                : 'movement',
+          description: `New event: ${newEvent.message}`,
+          details: { eventType: newEvent.eventType, relatedStock: newEvent.relatedStock }
+        }));
+      }
+    }
+  }, [
+    dispatch,
+    lastEventGenerationTime,
+    currentDate,
+    characters,
+    currentTimeOfDay,
+    dayType,
+    activeCharacterEvents.length
+  ]);
+  
+  // Handle active character events
+  const processCharacterEvents = useCallback(() => {
+    // Check pending events that should be activated
+    const currentTime = currentDate.getTime();
+    
+    // Check if there are pending events ready to be activated
+    pendingCharacterEvents.forEach(event => {
+      if (event.timestamp.getTime() <= currentTime) {
+        // Activate the event
+        dispatch(activateCharacterEvent(event.id));
+        
+        // Update character states for involved characters
+        event.characterIds.forEach(charId => {
+          const character = characters.find(c => c.id === charId);
+          if (character) {
+            // Set character to working or talking based on event type
+            const newState = 
+              event.eventType === 'DISCUSS' ? 'talking' : 
+              event.eventType === 'MOVE' ? 'walking' : 'working';
+            
+            dispatch(updateCharacterState({ id: charId, state: newState }));
+            
+            if (event.eventType === 'DISCUSS' && event.characterIds.length > 1) {
+              // For discussions, add conversation between characters
+              const otherCharId = event.characterIds.find(id => id !== charId);
+              if (otherCharId) {
+                dispatch(addConversation({
+                  id: charId,
+                  withCharacterId: otherCharId,
+                  content: event.message,
+                  timestamp: Date.now()
+                }));
+              }
+            } else {
+              // For other events, set task
+              dispatch(updateCharacterTask({ id: charId, task: event.message }));
+            }
+            
+            // Add to activity history
+            dispatch(addActivityToHistory({ 
+              id: charId, 
+              activity: event.message 
+            }));
+          }
+        });
+        
+        // Set timeout to complete the event
+        setTimeout(() => {
+          dispatch(completeCharacterEvent(event.id));
+          
+          // Reset character states
+          event.characterIds.forEach(charId => {
+            dispatch(updateCharacterState({ id: charId, state: 'idle' }));
+            dispatch(updateCharacterTask({ id: charId, task: null }));
+          });
+          
+          // Log the event completion
+          dispatch(addLogEntry({
+            id: Math.random().toString(36).substr(2, 9),
+            timestamp: Date.now(),
+            characterId: event.characterIds[0],
+            characterType: characters.find(c => c.id === event.characterIds[0])?.type || 'analyst',
+            roomId: event.originRoom,
+            actionType: event.eventType === 'ANALYZE' 
+              ? 'analysis' 
+              : event.eventType === 'DISCUSS' 
+                ? 'communication' 
+                : event.eventType === 'DECIDE' 
+                  ? 'decision' 
+                  : 'movement',
+            description: `Completed: ${event.message}`,
+            details: { eventType: event.eventType, relatedStock: event.relatedStock }
+          }));
+        }, event.duration);
+      }
+    });
+  }, [
+    dispatch, 
+    currentDate, 
+    pendingCharacterEvents, 
+    characters
+  ]);
+
+  // Update simulation time and date
   const updateSimulation = useCallback(() => {
     const now = Date.now();
     const elapsed = now - lastUpdateTime;
     setLastUpdateTime(now);
     
-    // Update simulation time
-    dispatch(updateSimulationTime(simulationTime + elapsed * speed));
+    // Calculate real-time elapsed in milliseconds
+    const simulationElapsed = elapsed * speed;
+    const newSimulationTime = simulationTime + simulationElapsed;
     
-    // Update day/night cycle (full cycle every 5 minutes of real time)
-    const cycleProgress = (simulationTime % (5 * 60 * 1000)) / (5 * 60 * 1000);
+    // Update simulation time
+    dispatch(updateSimulationTime(newSimulationTime));
+    
+    // Update simulation date
+    // 1 real-time second at 1x speed = 2 minutes in simulation time
+    // This makes a workday (8 hours) take 4 minutes at 1x speed
+    const simulationTimeMultiplier = 120; // 1 real second = 2 minutes (120 seconds)
+    const simulationMillisecondsElapsed = simulationElapsed * simulationTimeMultiplier;
+    
+    // Calculate new date
+    const newDate = new Date(currentDate.getTime() + simulationMillisecondsElapsed);
+    
+    // Check if we've moved to a new day
+    if (lastDateRef.current && 
+        newDate.getDate() !== lastDateRef.current.getDate()) {
+      // Handle day transition - dispatch an event that we can listen for
+      const dayCompleteEvent = new CustomEvent('dayComplete', { 
+        detail: { 
+          date: lastDateRef.current,
+          nextDate: newDate
+        } 
+      });
+      onDayComplete.dispatchEvent(dayCompleteEvent);
+      
+      // Only automatically pause if it's a weekday (for showing summary)
+      if (lastDateRef.current.getDay() !== 0 && lastDateRef.current.getDay() !== 6) {
+        dispatch(pauseSimulation());
+      }
+    }
+    
+    // Check if we've reached the end of the simulation
+    if (newDate >= simulationEndDate) {
+      dispatch(pauseSimulation());
+      console.log("Simulation completed!");
+      return;
+    }
+    
+    dispatch(updateCurrentDate(newDate));
+    lastDateRef.current = newDate;
+    
+    // Update day/night cycle (0-1 value representing progress through the day)
+    // Map hours 0-24 to cycle value 0-1
+    const hours = newDate.getHours();
+    const minutes = newDate.getMinutes();
+    const timeOfDayInMinutes = hours * 60 + minutes;
+    const cycleProgress = timeOfDayInMinutes / (24 * 60);
     dispatch(updateDayNightCycle(cycleProgress));
     
-    // Update characters
-    moveCharacters();
-    performCharacterTasks();
-    generateConversations();
+    // Process any pending events
+    processCharacterEvents();
     
-    // Generate market events occasionally
-    generateMarketEvents();
+    // Generate new character events occasionally
+    generateCharacterEvents();
     
-    // Update performance metrics occasionally
-    if (Math.random() < 0.05) {
-      updatePerformanceMetrics();
+    // Only run these during business hours (9am-5pm) on weekdays
+    const isBusinessHours = hours >= 9 && hours < 17;
+    const isWeekday = newDate.getDay() !== 0 && newDate.getDay() !== 6;
+    
+    if (isBusinessHours && isWeekday) {
+      // Update characters
+      moveCharacters();
+      performCharacterTasks();
+      generateConversations();
+      
+      // Generate market events occasionally
+      generateMarketEvents();
+      
+      // Update performance metrics occasionally
+      if (Math.random() < 0.05) {
+        updatePerformanceMetrics();
+      }
     }
   }, [
     dispatch, 
     lastUpdateTime, 
     simulationTime, 
-    speed, 
+    currentDate,
+    speed,
+    simulationStartDate,
+    simulationEndDate,
     moveCharacters, 
     performCharacterTasks, 
     generateConversations, 
     generateMarketEvents, 
-    updatePerformanceMetrics
+    updatePerformanceMetrics,
+    processCharacterEvents,
+    generateCharacterEvents
   ]);
   
   // Main simulation loop

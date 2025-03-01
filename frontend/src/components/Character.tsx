@@ -8,6 +8,7 @@ import {
   updateCharacterPosition, 
   updateCharacterState,
   updateCharacterRotation,
+  setCharacterTarget,
   Character as CharacterType
 } from '../store/charactersSlice';
 import { setFocusedEntity } from '../store/simulationSlice';
@@ -187,9 +188,13 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
   const [showSpeechBubble, setShowSpeechBubble] = useState(false);
   const [speechBubbleContent, setSpeechBubbleContent] = useState('');
 
+  // Check if we're in the onboarding phase
+  const onboardingComplete = useSelector((state: RootState) => state.simulation.onboardingComplete);
+  
   // Effect to handle speech bubbles
   useEffect(() => {
-    if (character.state === 'talking' && character.conversations.length > 0) {
+    // Only show speech bubbles if onboarding is complete
+    if (onboardingComplete && character.state === 'talking' && character.conversations.length > 0) {
       const latestConversation = character.conversations[character.conversations.length - 1];
       setSpeechBubbleContent(latestConversation.content);
       setShowSpeechBubble(true);
@@ -200,8 +205,11 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
       }, 5000);
       
       return () => clearTimeout(timer);
+    } else {
+      // Ensure speech bubbles are hidden during onboarding
+      setShowSpeechBubble(false);
     }
-  }, [character.state, character.conversations]);
+  }, [character.state, character.conversations, onboardingComplete]);
 
   // Update target when character's target position changes
   useEffect(() => {
@@ -275,6 +283,9 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
         // Reached target
         targetRef.current = null;
         
+        // Important fix: Clear the target in Redux store
+        dispatch(setCharacterTarget({ id: character.id, target: null }));
+        
         if (character.state === 'walking') {
           dispatch(updateCharacterState({ id: character.id, state: 'idle' }));
           
@@ -326,57 +337,68 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
         scale={1}
       />
       
-      {/* Name tag */}
-      <Text
-        position={[0, 2, 0]}
-        color="black"
-        fontSize={0.3}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {character.name}
-      </Text>
-      
-      {/* Speech bubble */}
-      {showSpeechBubble && (
-        <Html
-          position={[0, 2.5, 0]}
-          center
-          style={{
-            backgroundColor: 'white',
-            padding: '5px 10px',
-            borderRadius: '10px',
-            boxShadow: '0 0 5px rgba(0,0,0,0.2)',
-            width: '150px',
-            textAlign: 'center',
-            fontSize: '14px',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 100
-          }}
-        >
-          {speechBubbleContent}
-        </Html>
+      {/* Only render UI elements if onboarding is complete */}
+      {onboardingComplete && (
+        <>
+          {/* Name tag */}
+          <Text
+            position={[0, 2, 0]}
+            color="black"
+            fontSize={0.3}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {character.name}
+          </Text>
+          
+          {/* Speech bubble */}
+          {showSpeechBubble && (
+            <Html
+              position={[0, 2.5, 0]}
+              center
+              style={{
+                backgroundColor: 'white',
+                padding: '5px 10px',
+                borderRadius: '10px',
+                boxShadow: '0 0 5px rgba(0,0,0,0.2)',
+                width: '150px',
+                textAlign: 'center',
+                fontSize: '14px',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10
+              }}
+              occlude
+              calculatePosition={(el, camera, size) => [0, 0, 0]}
+              pointerEvents="none"
+            >
+              {speechBubbleContent}
+            </Html>
+          )}
+          
+          {/* State indicator */}
+          <Html
+            position={[0, -0.5, 0]}
+            center
+            style={{
+              backgroundColor: focused ? '#ffff00' : '#ffffff',
+              color: '#000000',
+              padding: '2px 5px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              opacity: 0.8,
+              pointerEvents: 'none',
+              width: '60px',
+              textAlign: 'center',
+              zIndex: 10
+            }}
+            occlude
+            calculatePosition={(el, camera, size) => [0, 0, 0]}
+            pointerEvents="none"
+          >
+            {character.state}
+          </Html>
+        </>
       )}
-      
-      {/* State indicator */}
-      <Html
-        position={[0, -0.5, 0]}
-        center
-        style={{
-          backgroundColor: focused ? '#ffff00' : '#ffffff',
-          color: '#000000',
-          padding: '2px 5px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          opacity: 0.8,
-          pointerEvents: 'none',
-          width: '60px',
-          textAlign: 'center',
-          zIndex: 100
-        }}
-      >
-        {character.state}
-      </Html>
     </group>
   );
 };
