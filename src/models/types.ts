@@ -79,3 +79,42 @@ export interface Metric {
   value: number;
   timestamp: number;
 }
+
+// Company types for knowledge base
+export interface CompanyNews {
+  id: string;
+  date: string;
+  headline: string;
+  summary: string;
+  impact: 'positive' | 'negative' | 'neutral';
+}
+
+export interface CompanyFinancials {
+  revenue: string;
+  profit: string;
+  growthRate: string;
+  peRatio: string;
+  marketCap: string;
+  dividendYield: string;
+}
+
+export interface CompanyDocument {
+  id: string;
+  title: string;
+  type: 'pdf' | 'spreadsheet' | 'presentation';
+  description: string;
+}
+
+export interface Company {
+  id: string;
+  ticker: string;
+  name: string;
+  logo: string;
+  description: string;
+  sector: string;
+  industry: string;
+  website: string;
+  financials: CompanyFinancials;
+  news: CompanyNews[];
+  documents: CompanyDocument[];
+}

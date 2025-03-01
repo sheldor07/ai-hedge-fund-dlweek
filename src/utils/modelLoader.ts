@@ -79,25 +79,25 @@ export const FURNITURE_MODELS = {
   ],
 };
 
-// Room colors - using more subtle, professional palette
+// Room colors - using a more vibrant professional palette for better visual distinction
 export const ROOM_COLORS = {
-  fundamentalAnalysis: '#bbdefb', // Lighter blue
-  technicalAnalysis: '#c8e6c9',   // Lighter green
-  executiveSuite: '#ffe0b2',      // Lighter orange
-  tradingFloor: '#ffccbc',        // Lighter coral
+  fundamentalAnalysis: '#1976d2', // Richer blue
+  technicalAnalysis: '#2e7d32',   // Richer green
+  executiveSuite: '#e65100',      // Richer orange
+  tradingFloor: '#d32f2f',        // Richer red
 };
 
-// Floor colors
-export const FLOOR_COLOR = '#8d6e63';       // Brown
-export const CORRIDOR_COLOR = '#a1887f';   // Lighter brown
-export const GRASS_COLOR = '#c5e1a5';      // Lighter green
+// Floor colors - improved for better visual contrast
+export const FLOOR_COLOR = '#5d4037';       // Darker rich brown for better floor contrast
+export const CORRIDOR_COLOR = '#8d6e63';    // Medium brown for corridors
+export const GRASS_COLOR = '#7cb342';       // Richer green for outdoor areas
 
-// Character Colors
+// Character Colors - enhanced for better visibility and distinction
 export const CHARACTER_COLORS = {
-  analyst: '#2196f3',
-  quant: '#4caf50',
-  executive: '#ff9800',
-  riskManager: '#f44336',
+  analyst: '#03a9f4',
+  quant: '#00c853',
+  executive: '#ff9100',
+  riskManager: '#ff1744',
 };
 
 // Market data colors

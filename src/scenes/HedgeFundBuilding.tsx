@@ -57,7 +57,12 @@ const Room: React.FC<{
         position={[0, -0.5, 0]} // Lower the floor significantly, placing it on the ground level
         receiveShadow
       >
-        <meshStandardMaterial color={FLOOR_COLOR} />
+        <meshStandardMaterial 
+          color={FLOOR_COLOR} 
+          metalness={0.1}
+          roughness={0.9}
+          // Add a subtle pattern with normal map would be ideal here
+        />
       </Box>
       
       {/* Room walls - using the Crossy Road style with block-like walls */}
@@ -72,10 +77,12 @@ const Room: React.FC<{
         >
           <meshStandardMaterial 
             color={ROOM_COLORS[room.type]} 
-            opacity={0.3} 
+            opacity={0.6} 
             transparent
-            emissive={isSelected ? '#ffffff' : '#000000'}
-            emissiveIntensity={isSelected ? 0.2 : 0}
+            emissive={ROOM_COLORS[room.type]}
+            emissiveIntensity={isSelected ? 0.5 : 0.2}
+            metalness={0.2}
+            roughness={0.7}
           />
         </Box>
         
@@ -88,10 +95,12 @@ const Room: React.FC<{
         >
           <meshStandardMaterial 
             color={ROOM_COLORS[room.type]} 
-            opacity={0.3} 
+            opacity={0.6} 
             transparent
-            emissive={isSelected ? '#ffffff' : '#000000'}
-            emissiveIntensity={isSelected ? 0.2 : 0}
+            emissive={ROOM_COLORS[room.type]}
+            emissiveIntensity={isSelected ? 0.5 : 0.2}
+            metalness={0.2}
+            roughness={0.7}
           />
         </Box>
         
@@ -104,10 +113,12 @@ const Room: React.FC<{
         >
           <meshStandardMaterial 
             color={ROOM_COLORS[room.type]} 
-            opacity={0.3} 
+            opacity={0.6} 
             transparent
-            emissive={isSelected ? '#ffffff' : '#000000'}
-            emissiveIntensity={isSelected ? 0.2 : 0}
+            emissive={ROOM_COLORS[room.type]}
+            emissiveIntensity={isSelected ? 0.5 : 0.2}
+            metalness={0.2}
+            roughness={0.7}
           />
         </Box>
       </group>
@@ -121,10 +132,12 @@ const Room: React.FC<{
       >
         <meshStandardMaterial 
           color={ROOM_COLORS[room.type]} 
-          opacity={0.3} 
+          opacity={0.6} 
           transparent
-          emissive={isSelected ? '#ffffff' : '#000000'}
-          emissiveIntensity={isSelected ? 0.2 : 0}
+          emissive={ROOM_COLORS[room.type]}
+          emissiveIntensity={isSelected ? 0.5 : 0.2}
+          metalness={0.2}
+          roughness={0.7}
         />
       </Box>
       
@@ -137,10 +150,12 @@ const Room: React.FC<{
       >
         <meshStandardMaterial 
           color={ROOM_COLORS[room.type]} 
-          opacity={0.3} 
+          opacity={0.6} 
           transparent
-          emissive={isSelected ? '#ffffff' : '#000000'}
-          emissiveIntensity={isSelected ? 0.2 : 0}
+          emissive={ROOM_COLORS[room.type]}
+          emissiveIntensity={isSelected ? 0.5 : 0.2}
+          metalness={0.2}
+          roughness={0.7}
         />
       </Box>
       
@@ -153,10 +168,12 @@ const Room: React.FC<{
       >
         <meshStandardMaterial 
           color={ROOM_COLORS[room.type]} 
-          opacity={0.3} 
+          opacity={0.6} 
           transparent
-          emissive={isSelected ? '#ffffff' : '#000000'}
-          emissiveIntensity={isSelected ? 0.2 : 0}
+          emissive={ROOM_COLORS[room.type]}
+          emissiveIntensity={isSelected ? 0.5 : 0.2}
+          metalness={0.2}
+          roughness={0.7}
         />
       </Box>
       
@@ -169,10 +186,12 @@ const Room: React.FC<{
       >
         <meshStandardMaterial 
           color={ROOM_COLORS[room.type]} 
-          opacity={0.3} 
+          opacity={0.6} 
           transparent
-          emissive={isSelected ? '#ffffff' : '#000000'}
-          emissiveIntensity={isSelected ? 0.2 : 0}
+          emissive={ROOM_COLORS[room.type]}
+          emissiveIntensity={isSelected ? 0.5 : 0.2}
+          metalness={0.2}
+          roughness={0.7}
         />
       </Box>
       
@@ -232,7 +251,11 @@ const HedgeFundBuilding: React.FC = () => {
         receiveShadow
       >
         <planeGeometry args={[50, 50]} />
-        <meshStandardMaterial color={GRASS_COLOR} />
+        <meshStandardMaterial 
+          color={GRASS_COLOR} 
+          metalness={0.0}
+          roughness={1.0}
+        />
       </mesh>
       
       {/* Building foundation */}
@@ -241,7 +264,11 @@ const HedgeFundBuilding: React.FC = () => {
         receiveShadow
       >
         <boxGeometry args={[30, 0.5, 30]} />
-        <meshStandardMaterial color="#bdbdbd" />
+        <meshStandardMaterial 
+          color="#9e9e9e" 
+          metalness={0.2}
+          roughness={0.8}
+        />
       </mesh>
 
       {/* Main corridors */}
@@ -250,14 +277,22 @@ const HedgeFundBuilding: React.FC = () => {
         position={[0, -0.45, 0]}
         receiveShadow
       >
-        <meshStandardMaterial color={CORRIDOR_COLOR} />
+        <meshStandardMaterial 
+          color={CORRIDOR_COLOR} 
+          metalness={0.1}
+          roughness={0.7}
+        />
       </Box>
       <Box
         args={[2, 0.1, 20]}
         position={[0, -0.45, 0]}
         receiveShadow
       >
-        <meshStandardMaterial color={CORRIDOR_COLOR} />
+        <meshStandardMaterial 
+          color={CORRIDOR_COLOR} 
+          metalness={0.1}
+          roughness={0.7}
+        />
       </Box>
       
       {/* Central area furniture for immersion */}
@@ -280,9 +315,11 @@ const HedgeFundBuilding: React.FC = () => {
           <meshStandardMaterial 
             color="#2196f3" 
             emissive="#2196f3" 
-            emissiveIntensity={0.8} 
+            emissiveIntensity={1.2} 
             transparent 
-            opacity={0.6} 
+            opacity={0.7}
+            metalness={0.8}
+            roughness={0.2}
           />
         </mesh>
         
@@ -303,9 +340,11 @@ const HedgeFundBuilding: React.FC = () => {
               <meshStandardMaterial 
                 color={i % 2 === 0 ? "#4caf50" : "#f44336"} 
                 emissive={i % 2 === 0 ? "#4caf50" : "#f44336"} 
-                emissiveIntensity={0.8} 
+                emissiveIntensity={1.2} 
                 transparent 
-                opacity={0.8} 
+                opacity={0.9}
+                metalness={0.8}
+                roughness={0.2}
               />
             </mesh>
           );
@@ -322,8 +361,10 @@ const HedgeFundBuilding: React.FC = () => {
         />
       ))}
       
-      {/* Additional lighting for better immersion */}
-      <ambientLight intensity={0.6} />
+      {/* Enhanced lighting for better immersion and atmosphere */}
+      <ambientLight intensity={0.4} /> {/* Reduced ambient to create more contrast */}
+      
+      {/* Main light source with shadows */}
       <pointLight 
         position={[0, 5, 0]} 
         intensity={800} 
@@ -331,12 +372,45 @@ const HedgeFundBuilding: React.FC = () => {
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
+        shadow-bias={-0.001}
       />
+      
+      {/* Blue accent light */}
       <pointLight 
         position={[0, 1, 0]} 
-        intensity={200} 
+        intensity={300} 
         color="#2196f3"
-        distance={10}
+        distance={15}
+        decay={2}
+      />
+      
+      {/* Additional colored accent lights for each corner */}
+      <pointLight 
+        position={[-10, 1, -10]} 
+        intensity={150} 
+        color="#1976d2" /* Blue for fundamental analysis corner */
+        distance={8}
+        decay={2}
+      />
+      <pointLight 
+        position={[10, 1, -10]} 
+        intensity={150} 
+        color="#2e7d32" /* Green for technical analysis corner */
+        distance={8}
+        decay={2}
+      />
+      <pointLight 
+        position={[-10, 1, 10]} 
+        intensity={150} 
+        color="#e65100" /* Orange for executive suite corner */
+        distance={8}
+        decay={2}
+      />
+      <pointLight 
+        position={[10, 1, 10]} 
+        intensity={150} 
+        color="#d32f2f" /* Red for trading floor corner */
+        distance={8}
         decay={2}
       />
     </group>

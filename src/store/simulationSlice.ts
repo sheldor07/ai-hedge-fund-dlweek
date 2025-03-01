@@ -28,6 +28,8 @@ interface SimulationState {
   currentMarketEvents: MarketEvent[];
   simulationTime: number; // in milliseconds
   focusedEntity: { type: 'character' | 'room' | null; id: string | null };
+  currentView: 'office' | 'knowledgeBase';
+  selectedCompany: string | null;
 }
 
 const initialState: SimulationState = {
@@ -43,6 +45,8 @@ const initialState: SimulationState = {
   currentMarketEvents: [],
   simulationTime: 0,
   focusedEntity: { type: null, id: null },
+  currentView: 'office',
+  selectedCompany: null,
 };
 
 export const simulationSlice = createSlice({
@@ -82,6 +86,18 @@ export const simulationSlice = createSlice({
     ) => {
       state.focusedEntity = action.payload;
     },
+    setCurrentView: (
+      state,
+      action: PayloadAction<'office' | 'knowledgeBase'>
+    ) => {
+      state.currentView = action.payload;
+    },
+    setSelectedCompany: (
+      state,
+      action: PayloadAction<string | null>
+    ) => {
+      state.selectedCompany = action.payload;
+    },
   },
 });
 
@@ -95,6 +111,8 @@ export const {
   removeMarketEvent,
   updateSimulationTime,
   setFocusedEntity,
+  setCurrentView,
+  setSelectedCompany,
 } = simulationSlice.actions;
 
 export default simulationSlice.reducer;

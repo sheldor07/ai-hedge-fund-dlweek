@@ -26,17 +26,29 @@ const BlockyCharacter: React.FC<{
   color: string,
   scale?: number,
   focused: boolean
-}> = ({ type, color, scale = 1, focused }) => {
+}> = ({ type, color, scale = 1.3, focused }) => { // Increased default scale for better visibility
   // Body parts with Crossy Road style
   return (
     <group scale={[scale, scale, scale]}>
+      {/* Character outline for better visibility */}
+      <mesh castShadow position={[0, 0.5, 0]}>
+        <boxGeometry args={[0.68, 0.88, 0.48]} />
+        <meshStandardMaterial 
+          color={'#000000'} 
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+      
       {/* Body */}
       <mesh castShadow position={[0, 0.5, 0]}>
         <boxGeometry args={[0.6, 0.8, 0.4]} />
         <meshStandardMaterial 
           color={color} 
-          emissive={focused ? '#ffffff' : '#000000'}
-          emissiveIntensity={focused ? 0.3 : 0}
+          emissive={color}
+          emissiveIntensity={focused ? 0.5 : 0.2}
+          metalness={0.3}
+          roughness={0.7}
         />
       </mesh>
       
@@ -45,8 +57,10 @@ const BlockyCharacter: React.FC<{
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshStandardMaterial 
           color={focused ? color : '#f5d7b5'} 
-          emissive={focused ? '#ffffff' : '#000000'}
-          emissiveIntensity={focused ? 0.3 : 0}
+          emissive={focused ? color : '#000000'}
+          emissiveIntensity={focused ? 0.5 : 0}
+          metalness={0.1}
+          roughness={0.8}
         />
       </mesh>
       
