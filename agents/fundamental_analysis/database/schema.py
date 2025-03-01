@@ -1,7 +1,3 @@
-"""
-Database schema definitions for MongoDB collections.
-"""
-
 import logging
 from pymongo import ASCENDING, DESCENDING, IndexModel, TEXT
 
@@ -9,7 +5,6 @@ from database.mongo_client import mongo_client
 
 logger = logging.getLogger("stock_analyzer.database")
 
-# Define collection names
 COMPANIES_COLLECTION = "companies"
 FINANCIAL_STATEMENTS_COLLECTION = "financial_statements"
 FINANCIAL_METRICS_COLLECTION = "financial_metrics"
@@ -18,14 +13,12 @@ VALUATION_MODELS_COLLECTION = "valuation_models"
 NEWS_SENTIMENT_COLLECTION = "news_sentiment"
 ANALYSIS_REPORTS_COLLECTION = "analysis_reports"
 
-# Common fields for all documents
 COMMON_FIELDS = {
     "creation_date": {"type": "date", "required": True},
     "last_updated": {"type": "date", "required": True},
     "modified_by": {"type": "string", "required": True},
 }
 
-# Schema definitions
 COMPANIES_SCHEMA = {
     "validator": {
         "$jsonSchema": {
@@ -168,7 +161,6 @@ ANALYSIS_REPORTS_SCHEMA = {
     }
 }
 
-# Collection configurations with indexes
 COLLECTION_CONFIGS = {
     COMPANIES_COLLECTION: {
         "schema": COMPANIES_SCHEMA,
@@ -228,24 +220,16 @@ COLLECTION_CONFIGS = {
 
 
 def setup_database():
-    """
-    Set up the MongoDB database by creating collections and indexes.
-    """
     try:
-        # Connect to MongoDB
         db = mongo_client.get_database()
         
-        # Get existing collections
         existing_collections = db.list_collection_names()
         
-        # Create collections and indexes
         for collection_name, config in COLLECTION_CONFIGS.items():
-            # Create collection if it doesn't exist
             if collection_name not in existing_collections:
                 logger.info(f"Creating collection: {collection_name}")
                 db.create_collection(collection_name, **config["schema"])
             
-            # Create indexes
             collection = db[collection_name]
             for index in config["indexes"]:
                 logger.info(f"Creating index for {collection_name}: {index.document}")

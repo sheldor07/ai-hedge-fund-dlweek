@@ -1,21 +1,14 @@
-"""
-Logging configuration for the stock analyzer application.
-"""
-
 import os
 import logging
 import logging.config
 from datetime import datetime
 
-# Create logs directory if it doesn't exist
 LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
-# Generate log filename with current date
 current_date = datetime.now().strftime("%Y-%m-%d")
 LOG_FILENAME = os.path.join(LOGS_DIR, f"stock_analyzer_{current_date}.log")
 
-# Logging configuration dictionary
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -39,13 +32,13 @@ LOGGING_CONFIG = {
             "level": "DEBUG",
             "formatter": "detailed",
             "filename": LOG_FILENAME,
-            "maxBytes": 10485760,  # 10MB
+            "maxBytes": 10485760,  
             "backupCount": 5,
             "encoding": "utf8",
         },
     },
     "loggers": {
-        "": {  # Root logger
+        "": {  
             "handlers": ["console", "file"],
             "level": "DEBUG",
             "propagate": True
@@ -80,9 +73,6 @@ LOGGING_CONFIG = {
 
 
 def setup_logging():
-    """
-    Setup logging configuration
-    """
     logging.config.dictConfig(LOGGING_CONFIG)
     logger = logging.getLogger("stock_analyzer")
     logger.info("Logging configured successfully")

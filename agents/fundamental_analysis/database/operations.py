@@ -1,7 +1,3 @@
-"""
-Database CRUD operations for MongoDB collections.
-"""
-
 import logging
 from datetime import datetime
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -14,26 +10,11 @@ logger = logging.getLogger("stock_analyzer.database")
 
 
 class DatabaseOperations:
-    """
-    Database CRUD operations for MongoDB collections.
-    """
-
     def __init__(self):
-        """Initialize the DatabaseOperations instance."""
         self.mongo_client = mongo_client
         self.db = mongo_client.get_database()
     
     def _add_metadata(self, document, modified_by="system"):
-        """
-        Add common metadata fields to a document.
-        
-        Args:
-            document (dict): The document to add metadata to.
-            modified_by (str): The identifier of who modified the document.
-            
-        Returns:
-            dict: The document with metadata fields added.
-        """
         current_time = datetime.utcnow()
         if "creation_date" not in document:
             document["creation_date"] = current_time
@@ -42,17 +23,6 @@ class DatabaseOperations:
         return document
     
     def insert_one(self, collection_name, document, modified_by="system"):
-        """
-        Insert a document into a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            document (dict): The document to insert.
-            modified_by (str): The identifier of who created the document.
-            
-        Returns:
-            str: The inserted document ID if successful, None otherwise.
-        """
         try:
             collection = self.db[collection_name]
             document = self._add_metadata(document, modified_by)
@@ -67,17 +37,6 @@ class DatabaseOperations:
             return None
     
     def insert_many(self, collection_name, documents, modified_by="system"):
-        """
-        Insert multiple documents into a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            documents (list): The documents to insert.
-            modified_by (str): The identifier of who created the documents.
-            
-        Returns:
-            list: The inserted document IDs if successful, empty list otherwise.
-        """
         try:
             collection = self.db[collection_name]
             for doc in documents:
@@ -90,16 +49,6 @@ class DatabaseOperations:
             return []
     
     def find_one(self, collection_name, query):
-        """
-        Find a document in a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            
-        Returns:
-            dict: The found document if any, None otherwise.
-        """
         try:
             collection = self.db[collection_name]
             result = collection.find_one(query)
@@ -109,20 +58,6 @@ class DatabaseOperations:
             return None
     
     def find_many(self, collection_name, query, sort=None, limit=0, skip=0, projection=None):
-        """
-        Find multiple documents in a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            sort (list): The sort specification.
-            limit (int): The maximum number of documents to return.
-            skip (int): The number of documents to skip.
-            projection (dict): The projection specification.
-            
-        Returns:
-            list: The found documents.
-        """
         try:
             collection = self.db[collection_name]
             cursor = collection.find(query, projection=projection)
@@ -142,29 +77,14 @@ class DatabaseOperations:
             return []
     
     def update_one(self, collection_name, query, update, modified_by="system", upsert=False):
-        """
-        Update a document in a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            update (dict): The update to apply.
-            modified_by (str): The identifier of who modified the document.
-            upsert (bool): Whether to insert a new document if no match is found.
-            
-        Returns:
-            int: The number of modified documents.
-        """
         try:
             collection = self.db[collection_name]
             
-            # Add last_updated and modified_by to $set if not already in update
             if "$set" not in update:
                 update["$set"] = {}
             update["$set"]["last_updated"] = datetime.utcnow()
             update["$set"]["modified_by"] = modified_by
             
-            # If upserting, ensure creation_date is set
             if upsert and "creation_date" not in update.get("$setOnInsert", {}):
                 if "$setOnInsert" not in update:
                     update["$setOnInsert"] = {}
@@ -183,22 +103,9 @@ class DatabaseOperations:
             return 0
     
     def update_many(self, collection_name, query, update, modified_by="system"):
-        """
-        Update multiple documents in a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            update (dict): The update to apply.
-            modified_by (str): The identifier of who modified the documents.
-            
-        Returns:
-            int: The number of modified documents.
-        """
         try:
             collection = self.db[collection_name]
             
-            # Add last_updated and modified_by to $set if not already in update
             if "$set" not in update:
                 update["$set"] = {}
             update["$set"]["last_updated"] = datetime.utcnow()
@@ -212,16 +119,6 @@ class DatabaseOperations:
             return 0
     
     def delete_one(self, collection_name, query):
-        """
-        Delete a document from a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            
-        Returns:
-            int: The number of deleted documents.
-        """
         try:
             collection = self.db[collection_name]
             result = collection.delete_one(query)
@@ -232,16 +129,6 @@ class DatabaseOperations:
             return 0
     
     def delete_many(self, collection_name, query):
-        """
-        Delete multiple documents from a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            
-        Returns:
-            int: The number of deleted documents.
-        """
         try:
             collection = self.db[collection_name]
             result = collection.delete_many(query)
@@ -251,44 +138,43 @@ class DatabaseOperations:
             logger.error(f"Error deleting documents from {collection_name}: {str(e)}")
             return 0
     
-    def count_documents(self, collection_name, query):
-        """
-        Count documents in a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            query (dict): The query to filter documents.
-            
-        Returns:
-            int: The number of matching documents.
-        """
+    def count_documents(self, collection_name, query=None):
         try:
             collection = self.db[collection_name]
+            query = query or {}
             count = collection.count_documents(query)
             return count
         except PyMongoError as e:
             logger.error(f"Error counting documents in {collection_name}: {str(e)}")
             return 0
     
+    def create_index(self, collection_name, keys, unique=False, sparse=False, background=True):
+        try:
+            collection = self.db[collection_name]
+            index_name = collection.create_index(keys, unique=unique, sparse=sparse, background=background)
+            logger.info(f"Index created on {collection_name}: {index_name}")
+            return index_name
+        except PyMongoError as e:
+            logger.error(f"Error creating index on {collection_name}: {str(e)}")
+            return None
+    
+    def drop_index(self, collection_name, index_name):
+        try:
+            collection = self.db[collection_name]
+            collection.drop_index(index_name)
+            logger.info(f"Index dropped from {collection_name}: {index_name}")
+            return True
+        except PyMongoError as e:
+            logger.error(f"Error dropping index from {collection_name}: {str(e)}")
+            return False
+    
     def aggregate(self, collection_name, pipeline):
-        """
-        Run an aggregation pipeline on a collection.
-        
-        Args:
-            collection_name (str): The name of the collection.
-            pipeline (list): The aggregation pipeline.
-            
-        Returns:
-            list: The aggregation results.
-        """
         try:
             collection = self.db[collection_name]
             result = list(collection.aggregate(pipeline))
             return result
         except PyMongoError as e:
-            logger.error(f"Error running aggregation on {collection_name}: {str(e)}")
+            logger.error(f"Error executing aggregation on {collection_name}: {str(e)}")
             return []
 
-
-# Create a global instance of the DatabaseOperations class
 db_ops = DatabaseOperations()

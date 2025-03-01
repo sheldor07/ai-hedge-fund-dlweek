@@ -1,7 +1,3 @@
-"""
-LLM integration module for enhancing report content.
-"""
-
 import logging
 from typing import Dict, Any, List, Optional
 import anthropic
@@ -12,9 +8,6 @@ from config.settings import ANTHROPIC_API_KEY, LLM_MODEL, LLM_MAX_TOKENS, LLM_TE
 logger = logging.getLogger("stock_analyzer.reports.llm")
 
 class LLMAssistant:
-    """
-    A class to handle interactions with LLMs for report enhancement.
-    """
     
     def __init__(self):
         """Initialize the LLM assistant."""
@@ -63,19 +56,7 @@ class LLMAssistant:
     def generate_investment_thesis(self, ticker: str, company_data: Dict[str, Any], 
                                   financial_metrics: Dict[str, Any], 
                                   valuation_data: Dict[str, Any]) -> str:
-        """
-        Generate an investment thesis based on company and financial data.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            company_data (dict): Company information
-            financial_metrics (dict): Financial metrics
-            valuation_data (dict): Valuation data
-            
-        Returns:
-            str: Generated investment thesis
-        """
-        # Format the data for the prompt
+
         company_str = "\n".join([f"{k}: {v}" for k, v in company_data.items() if v])
         
         metrics_str = ""
@@ -125,17 +106,7 @@ class LLMAssistant:
             return f"Investment thesis for {ticker} could not be generated due to insufficient data."
     
     def analyze_financial_results(self, ticker: str, financial_data: Dict[str, Any]) -> str:
-        """
-        Analyze financial results and provide insights.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            financial_data (dict): Financial data including income statement, balance sheet, etc.
-            
-        Returns:
-            str: Financial analysis
-        """
-        # Format the financial data for the prompt
+
         financial_str = ""
         for statement_type, statement in financial_data.items():
             if statement and isinstance(statement, dict):
@@ -168,17 +139,7 @@ class LLMAssistant:
             return "Financial analysis could not be generated due to insufficient data."
     
     def explain_valuation_models(self, ticker: str, valuation_data: Dict[str, Any]) -> str:
-        """
-        Explain the valuation models used and their implications.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            valuation_data (dict): Valuation model data
-            
-        Returns:
-            str: Explanation of valuation models
-        """
-        # Format the valuation data for the prompt
+
         valuation_str = ""
         for model, data in valuation_data.items():
             if data and "fair_value" in data:
@@ -213,17 +174,8 @@ class LLMAssistant:
             return "Valuation analysis could not be generated due to insufficient data."
     
     def analyze_risks(self, ticker: str, risk_data: Dict[str, Any]) -> str:
-        """
-        Analyze risks and provide insights.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            risk_data (dict): Risk metrics and scenarios
-            
-        Returns:
-            str: Risk analysis
-        """
-        # Format the risk data for the prompt
+
+
         risk_str = ""
         if "volatility" in risk_data:
             risk_str += "\nVOLATILITY METRICS:\n"
@@ -261,16 +213,6 @@ class LLMAssistant:
             return "Risk analysis could not be generated due to insufficient data."
     
     def synthesize_news_sentiment(self, ticker: str, news_data: Dict[str, Any]) -> str:
-        """
-        Synthesize news articles and sentiment into insights.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            news_data (dict): News articles and sentiment data
-            
-        Returns:
-            str: News sentiment analysis
-        """
         # Format the news data for the prompt
         news_str = f"Overall Sentiment Score: {news_data.get('sentiment_score', 0)}\n\nRECENT ARTICLES:\n"
         
