@@ -28,7 +28,7 @@ interface SimulationState {
   currentMarketEvents: MarketEvent[];
   simulationTime: number; // in milliseconds
   focusedEntity: { type: 'character' | 'room' | null; id: string | null };
-  currentView: 'office' | 'knowledgeBase';
+  currentView: 'office' | 'knowledgeBase' | 'portfolio';
   selectedCompany: string | null;
 }
 
@@ -88,7 +88,7 @@ export const simulationSlice = createSlice({
     },
     setCurrentView: (
       state,
-      action: PayloadAction<'office' | 'knowledgeBase'>
+      action: PayloadAction<'office' | 'knowledgeBase' | 'portfolio'>
     ) => {
       state.currentView = action.payload;
     },

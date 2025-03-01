@@ -14,6 +14,7 @@ import CharacterDetails from './components/CharacterDetails';
 import ComputerScreen from './components/ComputerScreen';
 import Sidebar from './components/Sidebar';
 import KnowledgeBase from './components/KnowledgeBase';
+import Portfolio from './components/Portfolio';
 // Scenes
 import HedgeFundBuilding from './scenes/HedgeFundBuilding';
 
@@ -130,6 +131,15 @@ function App() {
         <div className="knowledge-base-view" style={{ marginLeft: '220px', height: '100vh', overflow: 'auto' }}>
           <div className="knowledge-base-wrapper">
             <KnowledgeBase />
+          </div>
+        </div>
+      )}
+      
+      {/* Portfolio View - Direct render */}
+      {currentView === 'portfolio' && (
+        <div className="portfolio-view" style={{ marginLeft: '220px', height: '100vh', overflow: 'auto' }}>
+          <div className="portfolio-wrapper">
+            <Portfolio />
           </div>
         </div>
       )}

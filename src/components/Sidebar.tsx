@@ -10,6 +10,7 @@ const Sidebar: React.FC = () => {
   const menuItems = [
     { id: 'office', label: 'Office View', icon: '🏢' },
     { id: 'knowledgeBase', label: 'Knowledge Base', icon: '💻' },
+    { id: 'portfolio', label: 'Portfolio', icon: '📊' },
   ];
 
   return (
@@ -22,7 +23,7 @@ const Sidebar: React.FC = () => {
           <div 
             key={item.id}
             className={`sidebar-item ${currentView === item.id ? 'active' : ''}`}
-            onClick={() => dispatch(setCurrentView(item.id as 'office' | 'knowledgeBase'))}
+            onClick={() => dispatch(setCurrentView(item.id as 'office' | 'knowledgeBase' | 'portfolio'))}
           >
             <span className="sidebar-icon">{item.icon}</span>
             <span className="sidebar-label">{item.label}</span>
