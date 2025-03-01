@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ ticker }} - Stock Analysis Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .company-name {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .ticker {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .price-info {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        
+        .price-change {
+            font-weight: bold;
+        }
+        
+        .positive {
+            color: green;
+        }
+        
+        .negative {
+            color: red;
+        }
+        
+        section {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 20px;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        h3 {
+            color: #2c3e50;
+        }
+        
+        .company-info {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        .company-info div {
+            flex: 1;
+            min-width: 300px;
+            margin-right: 20px;
+        }
+        
+        .metric-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .metric-table th,
+        .metric-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .metric-table th {
+            background-color: #f5f5f5;
+        }
+        
+        .chart-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .chart {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .valuation-summary {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        
+        .valuation-model {
+            flex: 1;
+            min-width: 250px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .valuation-model h4 {
+            margin-top: 0;
+            color: #3498db;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        .recommendation {
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .recommendation h3 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        
+        .strong-buy {
+            border-left: 5px solid #27ae60;
+        }
+        
+        .buy {
+            border-left: 5px solid #2ecc71;
+        }
+        
+        .hold {
+            border-left: 5px solid #f39c12;
+        }
+        
+        .sell {
+            border-left: 5px solid #e74c3c;
+        }
+        
+        .strong-sell {
+            border-left: 5px solid #c0392b;
+        }
+        
+        .investment-thesis, .financial-summary, .valuation-explanation, .risk-assessment, .news-summary {
+            background-color: #f9f9f9;
+            padding: 15px 20px;
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+        
+        .financial-summary, .valuation-explanation, .risk-assessment, .news-summary {
+            font-size: 15px;
+            color: #333;
+        }
+        
+        .investment-thesis p, .financial-summary p, .valuation-explanation p, .risk-assessment p, .news-summary p {
+            margin: 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #777;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="company-name">{{ company.get('name', ticker) }}</div>
+        <div class="ticker">{{ ticker }}</div>
+        {% if report_data.get('price') %}
+        <div class="price-info">
+            ${{ "%.2f"|format(report_data.price.current) }}
+            {% if report_data.price.change > 0 %}
+            <span class="price-change positive">(+{{ "%.2f"|format(report_data.price.change) }}, +{{ "%.2f"|format(report_data.price.change_percent) }}%)</span>
+            {% else %}
+            <span class="price-change negative">({{ "%.2f"|format(report_data.price.change) }}, {{ "%.2f"|format(report_data.price.change_percent) }}%)</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div>Report Date: {{ report_date }}</div>
+    </header>
+
+    <section id="overview">
+        <h2>Company Overview</h2>
+        <div class="company-info">
+            <div>
+                <p><strong>Sector:</strong> {{ company.get('sector', 'N/A') }}</p>
+                <p><strong>Industry:</strong> {{ company.get('industry', 'N/A') }}</p>
+                <p><strong>Exchange:</strong> {{ company.get('exchange', 'N/A') }}</p>
+                <p><strong>Website:</strong> <a href="{{ company.get('website', '#') }}">{{ company.get('website', 'N/A') }}</a></p>
+            </div>
+            <div>
+                <p><strong>Description:</strong> {{ company.get('enhanced_description', company.get('description', 'No description available.')) }}</p>
+            </div>
+        </div>
+        
+        {% if report_data.get('analysis') and report_data.analysis.get('investment_thesis') %}
+        <div class="investment-thesis">
+            <h3>Investment Thesis</h3>
+            <p>{{ report_data.analysis.investment_thesis }}</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <section id="recommendation">
+        <h2>Investment Recommendation</h2>
+        {% if report_data.get('valuation_models') %}
+        {% set fair_values = [] %}
+        {% for model_type, model_data in report_data.valuation_models.items() %}
+            {% if model_data.get('fair_value', 0) > 0 %}
+                {% set _ = fair_values.append(model_data.fair_value) %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if fair_values|length > 0 %}
+            {% set avg_fair_value = fair_values|sum / fair_values|length %}
+            {% set upside = (avg_fair_value / report_data.price.current - 1) * 100 if report_data.price.current > 0 else 0 %}
+            
+            {% if upside > 25 %}
+                {% set rating = "Strong Buy" %}
+                {% set rating_class = "strong-buy" %}
+                {% set position = "significantly undervalued" %}
+            {% elif upside > 10 %}
+                {% set rating = "Buy" %}
+                {% set rating_class = "buy" %}
+                {% set position = "undervalued" %}
+            {% elif upside > -10 %}
+                {% set rating = "Hold" %}
+                {% set rating_class = "hold" %}
+                {% set position = "fairly valued" %}
+            {% elif upside > -25 %}
+                {% set rating = "Sell" %}
+                {% set rating_class = "sell" %}
+                {% set position = "overvalued" %}
+            {% else %}
+                {% set rating = "Strong Sell" %}
+                {% set rating_class = "strong-sell" %}
+                {% set position = "significantly overvalued" %}
+            {% endif %}
+            
+            <div class="recommendation {{ rating_class }}">
+                <h3>{{ rating }}</h3>
+                <p>Our analysis indicates that {{ ticker }} is currently <strong>{{ position }}</strong>. The average fair value based on our valuation models is <strong>${{ "%.2f"|format(avg_fair_value) }}</strong>, representing a <strong>{{ "%.1f"|format(upside) }}%</strong> {% if upside > 0 %}upside{% else %}downside{% endif %} from the current price.</p>
+                
+                <h4>Key Factors:</h4>
+                <ul>
+                {% if report_data.get('metrics') and report_data.metrics.get('profitability') %}
+                    {% set net_margin = report_data.metrics.profitability.get('net_profit_margin', 0) %}
+                    {% set roe = report_data.metrics.profitability.get('return_on_equity', 0) %}
+                    
+                    {% if net_margin and net_margin > 0.1 %}
+                    <li>Strong profitability with a net margin of {{ "%.1f"|format(net_margin * 100) }}%.</li>
+                    {% elif net_margin and net_margin < 0 %}
+                    <li>Currently unprofitable with a net margin of {{ "%.1f"|format(net_margin * 100) }}%.</li>
+                    {% endif %}
+                    
+                    {% if roe and roe > 0.15 %}
+                    <li>Good returns on equity at {{ "%.1f"|format(roe * 100) }}%.</li>
+                    {% endif %}
+                {% endif %}
+                
+                {% if report_data.get('metrics') and report_data.metrics.get('growth') %}
+                    {% if report_data.metrics.growth.get('cagr') and report_data.metrics.growth.cagr.get('revenue') %}
+                    {% set revenue_growth = report_data.metrics.growth.cagr.get('revenue') %}
+                    {% if revenue_growth and revenue_growth > 0.1 %}
+                    <li>Strong revenue growth at {{ "%.1f"|format(revenue_growth * 100) }}% CAGR.</li>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% if report_data.metrics.growth.get('cagr') and report_data.metrics.growth.cagr.get('net_income') %}
+                    {% set earnings_growth = report_data.metrics.growth.cagr.get('net_income') %}
+                    {% if earnings_growth and earnings_growth > 0.15 %}
+                    <li>Strong earnings growth at {{ "%.1f"|format(earnings_growth * 100) }}% CAGR.</li>
+                    {% endif %}
+                    {% endif %}
+                {% endif %}
+                
+                {% if report_data.get('metrics') and report_data.metrics.get('valuation') %}
+                    {% set pe_ratio = report_data.metrics.valuation.get('pe_ratio') %}
+                    {% set price_to_book = report_data.metrics.valuation.get('price_to_book') %}
+                    
+                    {% if pe_ratio and pe_ratio < 15 %}
+                    <li>Attractively valued with a P/E ratio of {{ "%.1f"|format(pe_ratio) }}.</li>
+                    {% elif pe_ratio and pe_ratio > 30 %}
+                    <li>High P/E ratio of {{ "%.1f"|format(pe_ratio) }}, which may indicate overvaluation.</li>
+                    {% endif %}
+                    
+                    {% if price_to_book and price_to_book < 1.5 %}
+                    <li>Trading below {{ "%.1f"|format(price_to_book) }}x book value, which may indicate undervaluation.</li>
+                    {% endif %}
+                {% endif %}
+                
+                {% if report_data.get('metrics') and report_data.metrics.get('solvency') %}
+                    {% set debt_to_equity = report_data.metrics.solvency.get('debt_to_equity') %}
+                    
+                    {% if debt_to_equity and debt_to_equity > 2 %}
+                    <li>High debt-to-equity ratio of {{ "%.1f"|format(debt_to_equity) }}, which may increase financial risk.</li>
+                    {% elif debt_to_equity and debt_to_equity < 0.5 %}
+                    <li>Conservative balance sheet with a low debt-to-equity ratio of {{ "%.1f"|format(debt_to_equity) }}.</li>
+                    {% endif %}
+                {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+        {% endif %}
+    </section>
+
+    {% if charts and charts.get('price') %}
+    <section id="price-history">
+        <h2>Price History</h2>
+        <div class="chart-container">
+            <img class="chart" src="charts/{{ charts.price }}" alt="{{ ticker }} Price Chart">
+        </div>
+    </section>
+    {% endif %}
+
+    <section id="financial-metrics">
+        <h2>Financial Metrics</h2>
+        
+        {% if report_data.get('analysis') and report_data.analysis.get('financial_summary') %}
+        <div class="financial-summary">
+            <h3>Financial Analysis</h3>
+            <p>{{ report_data.analysis.financial_summary }}</p>
+        </div>
+        {% endif %}
+        
+        {% if report_data.get('metrics') and report_data.metrics.get('profitability') %}
+        <h3>Profitability</h3>
+        <table class="metric-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Gross Margin</td>
+                <td>{{ "%.2f"|format(report_data.metrics.profitability.get('gross_margin', 0) * 100) }}%</td>
+                <td>Percentage of revenue retained after cost of goods sold</td>
+            </tr>
+            <tr>
+                <td>Operating Margin</td>
+                <td>{{ "%.2f"|format(report_data.metrics.profitability.get('operating_margin', 0) * 100) }}%</td>
+                <td>Percentage of revenue retained after operating expenses</td>
+            </tr>
+            <tr>
+                <td>Net Profit Margin</td>
+                <td>{{ "%.2f"|format(report_data.metrics.profitability.get('net_profit_margin', 0) * 100) }}%</td>
+                <td>Percentage of revenue retained after all expenses</td>
+            </tr>
+            <tr>
+                <td>Return on Equity (ROE)</td>
+                <td>{{ "%.2f"|format(report_data.metrics.profitability.get('return_on_equity', 0) * 100) }}%</td>
+                <td>Net income as a percentage of shareholders' equity</td>
+            </tr>
+            <tr>
+                <td>Return on Assets (ROA)</td>
+                <td>{{ "%.2f"|format(report_data.metrics.profitability.get('return_on_assets', 0) * 100) }}%</td>
+                <td>Net income as a percentage of total assets</td>
+            </tr>
+        </table>
+        {% endif %}
+        
+        {% if report_data.get('metrics') and report_data.metrics.get('growth') %}
+        <h3>Growth</h3>
+        <table class="metric-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+            {% if report_data.metrics.growth.get('yoy') %}
+            <tr>
+                <td>Revenue Growth (YoY)</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.yoy.get('revenue', 0) * 100) }}%</td>
+                <td>Year-over-year revenue growth</td>
+            </tr>
+            <tr>
+                <td>Earnings Growth (YoY)</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.yoy.get('net_income', 0) * 100) }}%</td>
+                <td>Year-over-year net income growth</td>
+            </tr>
+            <tr>
+                <td>EPS Growth (YoY)</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.yoy.get('eps', 0) * 100) }}%</td>
+                <td>Year-over-year earnings per share growth</td>
+            </tr>
+            {% endif %}
+            
+            {% if report_data.metrics.growth.get('cagr') %}
+            <tr>
+                <td>Revenue CAGR</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.cagr.get('revenue', 0) * 100) }}%</td>
+                <td>Compound annual growth rate of revenue</td>
+            </tr>
+            <tr>
+                <td>Earnings CAGR</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.cagr.get('net_income', 0) * 100) }}%</td>
+                <td>Compound annual growth rate of net income</td>
+            </tr>
+            <tr>
+                <td>EPS CAGR</td>
+                <td>{{ "%.2f"|format(report_data.metrics.growth.cagr.get('eps', 0) * 100) }}%</td>
+                <td>Compound annual growth rate of earnings per share</td>
+            </tr>
+            {% endif %}
+        </table>
+        {% endif %}
+        
+        {% if report_data.get('metrics') and report_data.metrics.get('valuation') %}
+        <h3>Valuation</h3>
+        <table class="metric-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>P/E Ratio</td>
+                <td>{{ "%.2f"|format(report_data.metrics.valuation.get('pe_ratio', 0)) }}</td>
+                <td>Price to earnings ratio</td>
+            </tr>
+            <tr>
+                <td>P/B Ratio</td>
+                <td>{{ "%.2f"|format(report_data.metrics.valuation.get('price_to_book', 0)) }}</td>
+                <td>Price to book ratio</td>
+            </tr>
+            <tr>
+                <td>P/S Ratio</td>
+                <td>{{ "%.2f"|format(report_data.metrics.valuation.get('price_to_sales', 0)) }}</td>
+                <td>Price to sales ratio</td>
+            </tr>
+            <tr>
+                <td>EV/EBITDA</td>
+                <td>{{ "%.2f"|format(report_data.metrics.valuation.get('ev_to_ebitda', 0)) }}</td>
+                <td>Enterprise value to EBITDA ratio</td>
+            </tr>
+            <tr>
+                <td>Dividend Yield</td>
+                <td>{{ "%.2f"|format(report_data.metrics.valuation.get('dividend_yield', 0) * 100) }}%</td>
+                <td>Annual dividend as a percentage of share price</td>
+            </tr>
+        </table>
+        {% endif %}
+        
+        {% if report_data.get('metrics') and (report_data.metrics.get('liquidity') or report_data.metrics.get('solvency')) %}
+        <h3>Financial Health</h3>
+        <table class="metric-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+            {% if report_data.metrics.get('liquidity') %}
+            <tr>
+                <td>Current Ratio</td>
+                <td>{{ "%.2f"|format(report_data.metrics.liquidity.get('current_ratio', 0)) }}</td>
+                <td>Current assets divided by current liabilities</td>
+            </tr>
+            <tr>
+                <td>Quick Ratio</td>
+                <td>{{ "%.2f"|format(report_data.metrics.liquidity.get('quick_ratio', 0)) }}</td>
+                <td>Liquid assets divided by current liabilities</td>
+            </tr>
+            {% endif %}
+            
+            {% if report_data.metrics.get('solvency') %}
+            <tr>
+                <td>Debt to Equity</td>
+                <td>{{ "%.2f"|format(report_data.metrics.solvency.get('debt_to_equity', 0)) }}</td>
+                <td>Total debt divided by shareholders' equity</td>
+            </tr>
+            <tr>
+                <td>Interest Coverage</td>
+                <td>{{ "%.2f"|format(report_data.metrics.solvency.get('interest_coverage', 0)) }}</td>
+                <td>Operating income divided by interest expense</td>
+            </tr>
+            {% endif %}
+        </table>
+        {% endif %}
+    </section>
+
+    {% if charts and (charts.get('revenue_income') or charts.get('eps') or charts.get('cash_flow')) %}
+    <section id="financial-charts">
+        <h2>Financial Charts</h2>
+        
+        {% if charts.get('revenue_income') %}
+        <div class="chart-container">
+            <h3>Revenue and Net Income</h3>
+            <img class="chart" src="charts/{{ charts.revenue_income }}" alt="{{ ticker }} Revenue and Net Income Chart">
+        </div>
+        {% endif %}
+        
+        {% if charts.get('eps') %}
+        <div class="chart-container">
+            <h3>Earnings Per Share (EPS)</h3>
+            <img class="chart" src="charts/{{ charts.eps }}" alt="{{ ticker }} EPS Chart">
+        </div>
+        {% endif %}
+        
+        {% if charts.get('cash_flow') %}
+        <div class="chart-container">
+            <h3>Operating Cash Flow</h3>
+            <img class="chart" src="charts/{{ charts.cash_flow }}" alt="{{ ticker }} Cash Flow Chart">
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if report_data.get('valuation_models') %}
+    <section id="valuation">
+        <h2>Valuation Analysis</h2>
+        
+        {% if report_data.get('analysis') and report_data.analysis.get('valuation_explanation') %}
+        <div class="valuation-explanation">
+            <p>{{ report_data.analysis.valuation_explanation }}</p>
+        </div>
+        {% endif %}
+        
+        {% if charts and charts.get('fair_value') %}
+        <div class="chart-container">
+            <h3>Fair Value Comparison</h3>
+            <img class="chart" src="charts/{{ charts.fair_value }}" alt="{{ ticker }} Fair Value Comparison Chart">
+        </div>
+        {% endif %}
+        
+        <div class="valuation-summary">
+            {% for model_type, model_data in report_data.valuation_models.items() %}
+            <div class="valuation-model">
+                <h4>{{ model_type|upper }} Model</h4>
+                <p><strong>Fair Value:</strong> ${{ "%.2f"|format(model_data.get('fair_value', 0)) }}</p>
+                <p><strong>Upside:</strong> {{ "%.1f"|format((model_data.get('fair_value', 0) / report_data.price.current - 1) * 100) if report_data.price.current > 0 else 0 }}%</p>
+                
+                <h5>Key Assumptions:</h5>
+                <ul>
+                {% if model_type == "dcf" and model_data.get('assumptions') %}
+                    <li>Revenue Growth: {{ "%.1f"|format(model_data.assumptions.get('revenue_growth', 0) * 100) }}%</li>
+                    <li>Terminal Growth: {{ "%.1f"|format(model_data.assumptions.get('terminal_growth', 0) * 100) }}%</li>
+                    <li>Discount Rate: {{ "%.1f"|format(model_data.assumptions.get('discount_rate', 0) * 100) }}%</li>
+                {% elif model_type == "ddm" and model_data.get('assumptions') %}
+                    <li>Dividend Growth: {{ "%.1f"|format(model_data.assumptions.get('dividend_growth', 0) * 100) }}%</li>
+                    <li>Required Return: {{ "%.1f"|format(model_data.assumptions.get('required_return', 0) * 100) }}%</li>
+                {% endif %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if charts and charts.get('dcf_sensitivity') %}
+        <div class="chart-container">
+            <h3>DCF Sensitivity Analysis</h3>
+            <img class="chart" src="charts/{{ charts.dcf_sensitivity }}" alt="{{ ticker }} DCF Sensitivity Chart">
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if report_data.get('risk') %}
+    <section id="risk-analysis">
+        <h2>Risk Analysis</h2>
+        
+        {% if report_data.get('analysis') and report_data.analysis.get('risk_assessment') %}
+        <div class="risk-assessment">
+            <p>{{ report_data.analysis.risk_assessment }}</p>
+        </div>
+        {% endif %}
+        
+        {% if report_data.risk.get('volatility') %}
+        <h3>Volatility Metrics</h3>
+        <table class="metric-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Beta</td>
+                <td>{{ "%.2f"|format(report_data.risk.volatility.get('beta', 0)) }}</td>
+                <td>Measure of stock volatility relative to the market</td>
+            </tr>
+            <tr>
+                <td>Annualized Volatility</td>
+                <td>{{ "%.2f"|format(report_data.risk.volatility.get('annualized_volatility', 0) * 100) }}%</td>
+                <td>Standard deviation of annual returns</td>
+            </tr>
+            <tr>
+                <td>Sharpe Ratio</td>
+                <td>{{ "%.2f"|format(report_data.risk.volatility.get('sharpe_ratio_annualized', 0)) }}</td>
+                <td>Measure of risk-adjusted return</td>
+            </tr>
+            <tr>
+                <td>Maximum Drawdown</td>
+                <td>{{ "%.2f"|format(report_data.risk.volatility.get('maximum_drawdown', 0) * 100) }}%</td>
+                <td>Maximum observed loss from a peak to a trough</td>
+            </tr>
+            <tr>
+                <td>Value at Risk (95%)</td>
+                <td>{{ "%.2f"|format(report_data.risk.volatility.get('var_95_annualized', 0) * 100) }}%</td>
+                <td>Potential loss with 95% confidence</td>
+            </tr>
+        </table>
+        {% endif %}
+        
+        {% if charts and charts.get('volatility') %}
+        <div class="chart-container">
+            <h3>Volatility Metrics</h3>
+            <img class="chart" src="charts/{{ charts.volatility }}" alt="{{ ticker }} Volatility Chart">
+        </div>
+        {% endif %}
+        
+        {% if report_data.risk.get('scenarios') and report_data.risk.scenarios.get('results') %}
+        <h3>Scenario Analysis</h3>
+        {% if charts and charts.get('scenarios') %}
+        <div class="chart-container">
+            <img class="chart" src="charts/{{ charts.scenarios }}" alt="{{ ticker }} Scenario Analysis Chart">
+        </div>
+        {% endif %}
+        
+        <table class="metric-table">
+            <tr>
+                <th>Scenario</th>
+                <th>Target Price</th>
+                <th>Upside</th>
+                <th>Probability</th>
+                <th>Description</th>
+            </tr>
+            {% for scenario_name, scenario_result in report_data.risk.scenarios.results.items() %}
+            <tr>
+                <td>{{ scenario_name|title }}</td>
+                <td>${{ "%.2f"|format(scenario_result.get('target_price', 0)) }}</td>
+                <td>{{ "%.1f"|format(scenario_result.get('upside_percent', 0)) }}%</td>
+                <td>{{ "%.1f"|format(report_data.risk.scenarios.scenarios.get(scenario_name, {}).get('probability', 0) * 100) }}%</td>
+                <td>{{ report_data.risk.scenarios.scenarios.get(scenario_name, {}).get('description', '') }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        
+        {% if report_data.risk.scenarios.get('expected_value') %}
+        <h4>Expected Value</h4>
+        <p><strong>Expected Price:</strong> ${{ "%.2f"|format(report_data.risk.scenarios.expected_value.get('expected_price', 0)) }}</p>
+        <p><strong>Standard Deviation:</strong> ${{ "%.2f"|format(report_data.risk.scenarios.expected_value.get('std_dev', 0)) }}</p>
+        <p><strong>Downside Risk:</strong> ${{ "%.2f"|format(report_data.risk.scenarios.expected_value.get('downside_risk', 0)) }}</p>
+        {% endif %}
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if report_data.get('news') %}
+    <section id="news-sentiment">
+        <h2>News & Sentiment</h2>
+        
+        {% if report_data.get('analysis') and report_data.analysis.get('news_summary') %}
+        <div class="news-summary">
+            <h3>News Analysis</h3>
+            <p>{{ report_data.analysis.news_summary }}</p>
+        </div>
+        {% endif %}
+        
+        <h3>Recent News</h3>
+        <p><strong>Overall Sentiment:</strong>
+            {% set sentiment = report_data.news.get('sentiment_score', 0) %}
+            {% if sentiment > 0.2 %}
+            <span style="color: green;">Positive ({{ "%.2f"|format(sentiment) }})</span>
+            {% elif sentiment > -0.2 %}
+            <span style="color: orange;">Neutral ({{ "%.2f"|format(sentiment) }})</span>
+            {% else %}
+            <span style="color: red;">Negative ({{ "%.2f"|format(sentiment) }})</span>
+            {% endif %}
+        </p>
+        
+        <table class="metric-table">
+            <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Source</th>
+                <th>Sentiment</th>
+            </tr>
+            {% for article in report_data.news.articles[:5] %}
+            <tr>
+                <td>{{ article.date.strftime('%Y-%m-%d') }}</td>
+                <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
+                <td>{{ article.source }}</td>
+                <td>
+                    {% if article.sentiment_score > 0.2 %}
+                    <span style="color: green;">Positive ({{ "%.2f"|format(article.sentiment_score) }})</span>
+                    {% elif article.sentiment_score > -0.2 %}
+                    <span style="color: orange;">Neutral ({{ "%.2f"|format(article.sentiment_score) }})</span>
+                    {% else %}
+                    <span style="color: red;">Negative ({{ "%.2f"|format(article.sentiment_score) }})</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+    {% endif %}
+
+    <footer>
+        <p>This report was generated on {{ report_date }} and should not be considered as investment advice. All analysis is based on historical data and may not predict future performance. Always conduct your own research before making investment decisions.</p>
+    </footer>
+</body>
+</html>
