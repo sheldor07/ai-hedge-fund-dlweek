@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ stock_symbol }} - Investment Analysis Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .metric {
+            margin-bottom: 15px;
+        }
+        .metric-label {
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .recommendation {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .buy {
+            background-color: #e6f7e6;
+            color: #2ecc71;
+        }
+        .sell {
+            background-color: #fde6e6;
+            color: #e74c3c;
+        }
+        .hold {
+            background-color: #f7f7e6;
+            color: #f39c12;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{{ stock_symbol }} - Investment Analysis Report</h1>
+            <p>Generated on {{ generated_date }}</p>
+        </header>
+        
+        <div class="section">
+            <h2>Executive Summary</h2>
+            {% if combined_analysis and combined_analysis.summary %}
+                <p>{{ combined_analysis.summary }}</p>
+            {% else %}
+                <p>This report presents a comprehensive analysis of {{ stock_symbol }}, combining fundamental and technical analysis to provide investment insights.</p>
+            {% endif %}
+            
+            {% if combined_analysis and combined_analysis.recommendation %}
+                <div class="recommendation {{ combined_analysis.recommendation|lower }}">
+                    Recommendation: {{ combined_analysis.recommendation }}
+                    {% if combined_analysis.confidence %}
+                        (Confidence: {{ "%.1f"|format(combined_analysis.confidence * 100) }}%)
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="section">
+            <h2>Fundamental Analysis</h2>
+            
+            {% if fundamental_data and fundamental_data.ratios %}
+                <h3>Key Financial Ratios</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for key, value in fundamental_data.ratios.items() %}
+                        <tr>
+                            <td>{{ key|replace("_", " ")|title }}</td>
+                            <td>{{ value }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+            
+            {% if fundamental_data and fundamental_data.growth %}
+                <h3>Growth Analysis</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for key, value in fundamental_data.growth.items() %}
+                        <tr>
+                            <td>{{ key|replace("_", " ")|title }}</td>
+                            <td>{{ value }}%</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+            
+            {% if fundamental_data and fundamental_data.valuation %}
+                <h3>Valuation Assessment</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for key, value in fundamental_data.valuation.items() %}
+                        <tr>
+                            <td>{{ key|replace("_", " ")|title }}</td>
+                            <td>{% if key == "fair_value" or key == "target_price" %}${% endif %}{{ value }}{% if key == "upside_potential" or key == "downside_risk" %}%{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+        </div>
+        
+        <div class="section">
+            <h2>Technical Analysis</h2>
+            
+            {% if technical_data and technical_data.indicators %}
+                <h3>Technical Indicators</h3>
+                <table>
+                    <tr>
+                        <th>Indicator</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for key, value in technical_data.indicators.items() %}
+                        <tr>
+                            <td>{{ key|upper }}</td>
+                            <td>{{ value }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+            
+            {% if technical_data and technical_data.patterns %}
+                <h3>Pattern Recognition</h3>
+                <ul>
+                    {% for pattern in technical_data.patterns %}
+                        <li>{{ pattern }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            
+            {% if technical_data and technical_data.prediction %}
+                <h3>Price Prediction</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    {% for key, value in technical_data.prediction.items() %}
+                        <tr>
+                            <td>{{ key|replace("_", " ")|title }}</td>
+                            <td>{% if key == "price_target" %}${% endif %}{{ value }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+        </div>
+        
+        {% if combined_analysis %}
+            <div class="section">
+                <h2>Combined Insights</h2>
+                
+                {% if combined_analysis.swot %}
+                    <h3>SWOT Analysis</h3>
+                    
+                    {% if combined_analysis.swot.strengths %}
+                        <h4>Strengths</h4>
+                        <ul>
+                            {% for strength in combined_analysis.swot.strengths %}
+                                <li>{{ strength }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    
+                    {% if combined_analysis.swot.weaknesses %}
+                        <h4>Weaknesses</h4>
+                        <ul>
+                            {% for weakness in combined_analysis.swot.weaknesses %}
+                                <li>{{ weakness }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    
+                    {% if combined_analysis.swot.opportunities %}
+                        <h4>Opportunities</h4>
+                        <ul>
+                            {% for opportunity in combined_analysis.swot.opportunities %}
+                                <li>{{ opportunity }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    
+                    {% if combined_analysis.swot.threats %}
+                        <h4>Threats</h4>
+                        <ul>
+                            {% for threat in combined_analysis.swot.threats %}
+                                <li>{{ threat }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endif %}
+                
+                {% if combined_analysis.explanation %}
+                    <h3>Investment Thesis</h3>
+                    <p>{{ combined_analysis.explanation }}</p>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <div class="footer">
+            <p>This report was automatically generated by the Manager Agent.</p>
+            <p>Investment decisions should not be made solely based on this report. Always conduct additional research.</p>
+        </div>
+    </div>
+</body>
+</html>
