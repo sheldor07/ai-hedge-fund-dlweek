@@ -28,8 +28,8 @@ export interface SimulationState {
  */
 export const initializeSimulation = (
   investmentAmount: number,
-  startDate: Date = new Date(2023, 2, 1), // March 1, 2023
-  endDate: Date = new Date(2024, 2, 1), // March 1, 2024
+  startDate: Date = new Date(2023, 2, 1, 8, 0, 0), // March 1, 2023, 8:00 AM
+  endDate: Date = new Date(2024, 2, 1, 17, 0, 0), // March 1, 2024, 5:00 PM
   characters: { id: string, type: string, name: string }[]
 ): SimulationState => {
   // Format the start date as YYYY-MM-DD

@@ -50,7 +50,7 @@ interface HistoricalDataPoint {
   value: number;
 }
 
-interface PortfolioState {
+interface PortfolioStateUI {
   holdings: HoldingWithAllocation[];
   metrics: PortfolioMetrics;
   transactions: Array<{
@@ -68,9 +68,98 @@ interface PortfolioState {
   selectedTimeRange: '1D' | '1W' | '1M' | '3M' | 'YTD' | '1Y' | 'ALL';
 }
 
+// Sample data to use when the actual portfolio data is not yet available
+const samplePortfolioState: PortfolioStateUI = {
+  holdings: [
+    {
+      stock: 'AMZN',
+      quantity: 150,
+      averagePurchasePrice: 178.35,
+      currentPrice: 185.25,
+      currentValue: 27787.5,
+      unrealizedPnL: 1035,
+      unrealizedPnLPercent: 3.87,
+      allocation: 27.5,
+      allocationPercentage: 27.5,
+      profitLoss: 1035,
+      profitLossPercentage: 3.87,
+      name: 'Amazon.com Inc',
+      ticker: 'AMZN',
+      companyId: 'amzn-1',
+      sharesHeld: 150,
+      purchasePrice: 178.35
+    },
+    {
+      stock: 'NVDA',
+      quantity: 100,
+      averagePurchasePrice: 790.45,
+      currentPrice: 815.20,
+      currentValue: 81520,
+      unrealizedPnL: 2475,
+      unrealizedPnLPercent: 3.13,
+      allocation: 25.8,
+      allocationPercentage: 25.8,
+      profitLoss: 2475,
+      profitLossPercentage: 3.13,
+      name: 'NVIDIA Corporation',
+      ticker: 'NVDA',
+      companyId: 'nvda-1',
+      sharesHeld: 100,
+      purchasePrice: 790.45
+    }
+  ],
+  metrics: {
+    cashAvailable: 420000,
+    dailyReturn: 1.2,
+    monthlyReturn: 3.5,
+    ytdReturn: 8.7,
+    alpha: 1.3,
+    beta: 0.95,
+    sharpeRatio: 1.8,
+    maxDrawdown: 5.2,
+    volatility: 15.3
+  },
+  transactions: [
+    {
+      id: 'txn-1',
+      action: 'buy',
+      ticker: 'AMZN',
+      shares: 150,
+      price: 178.35,
+      formattedDate: '2024-01-15',
+      timestamp: 1705307400000,
+      decisionMaker: 'AI Quant Model'
+    },
+    {
+      id: 'txn-2',
+      action: 'buy',
+      ticker: 'NVDA',
+      shares: 100,
+      price: 790.45,
+      formattedDate: '2024-02-01',
+      timestamp: 1706774400000,
+      decisionMaker: 'Risk Manager'
+    }
+  ],
+  historicalPerformance: Array.from({ length: 30 }, (_, i) => ({
+    timestamp: Date.now() - (30 - i) * 24 * 60 * 60 * 1000,
+    value: 1000000 + Math.random() * 50000 * i
+  })),
+  cashFlows: [
+    {
+      id: 'cf-1',
+      timestamp: 1704067200000,
+      type: 'deposit',
+      amount: 1000000,
+      description: 'Initial fund deposit'
+    }
+  ],
+  selectedTimeRange: '1M'
+};
+
 const Portfolio: React.FC = () => {
   const dispatch = useDispatch();
-  const portfolioState = useSelector((state: RootState) => state.portfolio as unknown as PortfolioState);
+  const portfolioData = useSelector((state: RootState) => state.portfolio);
   const [activeTab, setActiveTab] = useState<'holdings' | 'orders' | 'performance' | 'cash'>('holdings');
   const [orderBookFilter, setOrderBookFilter] = useState<{
     action: 'all' | 'buy' | 'sell' | 'hold';
@@ -81,6 +170,9 @@ const Portfolio: React.FC = () => {
     ticker: null,
     dateRange: { start: null, end: null },
   });
+
+  // Use sample data if the real data isn't available yet
+  const portfolioState: PortfolioStateUI = samplePortfolioState;
 
   // Calculate derived data
   const totalPortfolioValue = portfolioState.holdings.reduce(

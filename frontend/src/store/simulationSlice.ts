@@ -120,9 +120,9 @@ const initialState: SimulationState = {
   isRunning: false,
   speed: 1,
   speedOptions: [1, 2, 5, 10, 50],
-  simulationStartDate: new Date(2023, 2, 1, 9, 0, 0), // March 1, 2023, 9:00 AM
+  simulationStartDate: new Date(2023, 2, 1, 8, 0, 0), // March 1, 2023, 8:00 AM
   simulationEndDate: new Date(2024, 2, 1, 17, 0, 0), // March 1, 2024, 5:00 PM
-  currentDate: new Date(2023, 2, 1, 9, 0, 0), // Start with March 1, 2023, 9:00 AM
+  currentDate: new Date(2023, 2, 1, 8, 0, 0), // Start with March 1, 2023, 8:00 AM
   dayNightCycle: 0.5,
   currentTimeOfDay: 'MORNING_BRIEFING',
   dayType: 'WEEKDAY',
@@ -245,10 +245,10 @@ export const simulationSlice = createSlice({
       // The actual implementation will be in the useSimulationEngine hook
     },
     fastForwardToNextDay: (state) => {
-      // Move to the next day at 9:00 AM
+      // Move to the next day at 8:00 AM
       const nextDay = new Date(state.currentDate);
       nextDay.setDate(nextDay.getDate() + 1);
-      nextDay.setHours(9, 0, 0, 0);
+      nextDay.setHours(8, 0, 0, 0);
       state.currentDate = nextDay;
       state.currentTimeOfDay = 'MORNING_BRIEFING';
       
@@ -260,13 +260,13 @@ export const simulationSlice = createSlice({
       state.activeCharacterEvents = [];
     },
     fastForwardToNextWeekday: (state) => {
-      // Move to the next weekday at 9:00 AM
+      // Move to the next weekday at 8:00 AM
       const nextDay = new Date(state.currentDate);
       do {
         nextDay.setDate(nextDay.getDate() + 1);
       } while (nextDay.getDay() === 0 || nextDay.getDay() === 6); // Skip weekends
       
-      nextDay.setHours(9, 0, 0, 0);
+      nextDay.setHours(8, 0, 0, 0);
       state.currentDate = nextDay;
       state.currentTimeOfDay = 'MORNING_BRIEFING';
       state.dayType = 'WEEKDAY';

@@ -177,6 +177,7 @@ const BlockyCharacter: React.FC<{
 
 // Main Character component
 const Character: React.FC<CharacterProps> = ({ character }) => {
+  console.log(character);
   const dispatch = useDispatch();
   const characterRef = useRef<THREE.Group>(null);
   const targetRef = useRef<THREE.Vector3 | null>(null);
@@ -260,25 +261,38 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
         // Calculate direction vector
         const direction = new THREE.Vector3().subVectors(target, position).normalize();
         
-        // Move towards target
-        position.add(direction.multiplyScalar(CHARACTER_SPEED * simulationSpeed));
+        // Move towards target with a minimum distance threshold to prevent jitter
+        if (distance > 0.5) {
+          position.add(direction.multiplyScalar(CHARACTER_SPEED * simulationSpeed));
         
-        // Calculate rotation to face movement direction
-        const angle = Math.atan2(direction.x, direction.z);
-        dispatch(updateCharacterRotation({ 
-          id: character.id, 
-          rotation: angle 
-        }));
-        
-        // Update character position in Redux store
-        dispatch(updateCharacterPosition({
-          id: character.id,
-          position: {
-            x: position.x,
-            y: position.y,
-            z: position.z
-          }
-        }));
+          // Calculate rotation to face movement direction
+          const angle = Math.atan2(direction.x, direction.z);
+          dispatch(updateCharacterRotation({ 
+            id: character.id, 
+            rotation: angle 
+          }));
+          
+          // Update character position in Redux store
+          dispatch(updateCharacterPosition({
+            id: character.id,
+            position: {
+              x: position.x,
+              y: position.y,
+              z: position.z
+            }
+          }));
+        } else {
+          // If we're very close but not quite there, snap to the target
+          position.copy(target);
+          dispatch(updateCharacterPosition({
+            id: character.id,
+            position: {
+              x: target.x,
+              y: target.y,
+              z: target.z
+            }
+          }));
+        }
       } else {
         // Reached target
         targetRef.current = null;
@@ -313,93 +327,142 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
   const [bobOffset, setBobOffset] = useState(0);
   
   useFrame(({ clock }) => {
-    if (character.state === 'walking') {
+    // Only apply bobbing animation if we have a target (real movement)
+    if (character.state === 'walking' && targetRef.current) {
       // Simple bobbing animation when walking
       setBobOffset(Math.sin(clock.getElapsedTime() * 10) * 0.05);
     } else {
-      // Subtle idle animation
-      setBobOffset(Math.sin(clock.getElapsedTime() * 2) * 0.02);
+      // Subtle idle animation, or gradually reduce bobbing when stopping
+      const targetBob = Math.sin(clock.getElapsedTime() * 2) * 0.02;
+      // Smooth transition back to idle bobbing
+      setBobOffset(bobOffset * 0.9 + targetBob * 0.1);
     }
   });
 
   return (
-    <group 
-      ref={characterRef} 
-      position={[character.position.x, character.position.y + bobOffset, character.position.z]}
-      rotation={[0, character.rotation, 0]}
-      onClick={handleCharacterClick}
-    >
-      {/* Use the Blocky Character model */}
-      <BlockyCharacter 
-        type={character.type} 
-        color={CHARACTER_COLORS[character.type]}
-        focused={focused}
-        scale={1}
-      />
-      
-      {/* Only render UI elements if onboarding is complete */}
+    <>
+      {/* Render UI elements separately from the character model */}
       {onboardingComplete && (
         <>
           {/* Name tag */}
-          <Text
-            position={[0, 2, 0]}
-            color="black"
-            fontSize={0.3}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {character.name}
-          </Text>
-          
-          {/* Speech bubble */}
-          {showSpeechBubble && (
+          <group position={[character.position.x, character.position.y + 2 + bobOffset, character.position.z]}>
             <Html
-              position={[0, 2.5, 0]}
               center
               style={{
-                backgroundColor: 'white',
-                padding: '5px 10px',
-                borderRadius: '10px',
-                boxShadow: '0 0 5px rgba(0,0,0,0.2)',
-                width: '150px',
+                backgroundColor: CHARACTER_COLORS[character.type],
+                padding: '8px 12px',
+                borderRadius: '4px',
+                width: 'auto',
                 textAlign: 'center',
-                fontSize: '14px',
-                transform: 'translate(-50%, -50%)',
-                zIndex: 10
+                fontSize: '200px',
+                fontWeight: 'bold',
+                color: 'white',
+                whiteSpace: 'nowrap'
               }}
-              occlude
-              calculatePosition={(el, camera, size) => [0, 0, 0]}
+              distanceFactor={8}
               pointerEvents="none"
             >
-              {speechBubbleContent}
+              {character.name}
             </Html>
+          </group>
+
+          {/* Speech bubble */}
+          {showSpeechBubble && (
+            <group position={[character.position.x, character.position.y + 2.5 + bobOffset, character.position.z]}>
+              <Html
+                center
+                style={{
+                  backgroundColor: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  width: '500px',
+                  textAlign: 'center',
+                  fontSize: '50px',
+                  fontWeight: 'bold',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10
+                }}
+                distanceFactor={8}
+                pointerEvents="none"
+              >
+                {speechBubbleContent}
+              </Html>
+            </group>
           )}
-          
-          {/* State indicator */}
+
+          {/* Task bubble */}
+          {character.currentTask && (
+            <group position={[character.position.x, character.position.y + 3 + bobOffset, character.position.z]}>
+              <Html
+                center
+                style={{
+                  backgroundColor: '#e8f5e9',
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  width: '500px',
+                  textAlign: 'center',
+                  fontSize: '50px',
+                  fontWeight: 'bold',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10,
+                  border: '2px solid #4caf50'
+                }}
+                distanceFactor={8}
+                pointerEvents="none"
+              >
+                {character.currentTask}
+              </Html>
+            </group>
+          )}
+        </>
+      )}
+
+      {/* Character model */}
+      <group 
+        ref={characterRef} 
+        position={[character.position.x, character.position.y + bobOffset, character.position.z]}
+        rotation={[0, character.rotation, 0]}
+        onClick={handleCharacterClick}
+      >
+        <BlockyCharacter 
+          type={character.type} 
+          color={CHARACTER_COLORS[character.type]}
+          focused={focused}
+          scale={1}
+        />
+
+        {/* State indicator */}
+        {onboardingComplete && (
           <Html
             position={[0, -0.5, 0]}
             center
             style={{
-              backgroundColor: focused ? '#ffff00' : '#ffffff',
-              color: '#000000',
-              padding: '2px 5px',
+              backgroundColor: 
+                character.state === 'talking' ? '#4caf50' :
+                character.state === 'walking' ? '#2196f3' :
+                character.state === 'working' ? '#f06292' :
+                '#e0e0e0',
+              color: '#ffffff',
+              padding: '4px 8px',
               borderRadius: '4px',
-              fontSize: '10px',
-              opacity: 0.8,
+              fontSize: '24px',
+              fontWeight: 'bold',
+              opacity: 0.9,
               pointerEvents: 'none',
-              width: '60px',
-              textAlign: 'center',
-              zIndex: 10
+              textTransform: 'capitalize',
+              letterSpacing: '0.5px',
+              boxShadow: '0 2px 2px rgba(0,0,0,0.1)'
             }}
-            occlude
-            calculatePosition={(el, camera, size) => [0, 0, 0]}
+            distanceFactor={8}
             pointerEvents="none"
           >
             {character.state}
           </Html>
-        </>
-      )}
-    </group>
+        )}
+      </group>
+    </>
   );
 };
 

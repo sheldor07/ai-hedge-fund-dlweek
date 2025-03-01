@@ -16,7 +16,7 @@ const Sidebar: React.FC = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <img src="logo.png"  className=""alt="Herkshire Bathaway Logo" />
+        <img src="logo.png" className="sidebar-logo" alt="Herkshire Bathaway Logo" />
       </div>
       <div className="sidebar-menu">
         {menuItems.map((item) => (

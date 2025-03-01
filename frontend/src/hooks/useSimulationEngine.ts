@@ -44,6 +44,11 @@ import {
   SimulatedEvent,
   SimulatedEventsData
 } from '../utils/simulationEventLoader';
+import {
+  loadEvents,
+  loadTrades,
+  processDailyData
+} from '../utils/eventProcessor';
 
 // Array of first names for random character generation
 const FIRST_NAMES = [
@@ -84,47 +89,77 @@ const MARKET_EVENT_TYPES = [
 // Character decision-making messages
 const CHARACTER_MESSAGES = {
   analyst: [
-    'Analyzing recent quarterly reports...',
-    'Checking industry trends...',
-    'Comparing balance sheet metrics...',
-    'Reviewing management changes...',
-    'Evaluating competitor performance...',
+    'Analyzing {ticker}\'s recent quarterly reports...',
+    'Checking industry trends for {ticker}...',
+    'Comparing {ticker}\'s balance sheet metrics to competitors...',
+    'Reviewing {ticker}\'s management changes and their impact...',
+    'Evaluating {ticker}\'s competitive position in the market...',
+    'Calculating {ticker}\'s forward P/E ratio and growth potential...',
+    'Examining {ticker}\'s free cash flow and dividend sustainability...',
+    'Studying {ticker}\'s market share trajectory...',
+    'Analyzing {ticker}\'s recent acquisitions and strategic moves...',
+    'Evaluating {ticker}\'s international expansion efforts...',
   ],
   quant: [
-    'Running regression analysis...',
-    'Optimizing trading algorithm...',
-    'Backtesting new strategy...',
-    'Examining correlation factors...',
-    'Calculating volatility metrics...',
+    'Running regression analysis on {ticker}\'s price movements...',
+    'Optimizing trading algorithm for {ticker}...',
+    'Backtesting new strategy for {ticker}...',
+    'Examining correlation factors between {ticker} and sector indices...',
+    'Calculating {ticker}\'s volatility metrics and momentum indicators...',
+    'Building a machine learning model to predict {ticker}\'s price action...',
+    'Evaluating {ticker}\'s technical patterns and support levels...',
+    'Analyzing {ticker}\'s volume profile and unusual activity...',
+    'Running Monte Carlo simulations for {ticker}\'s price projections...',
+    'Calculating optimal position sizing for {ticker} in our portfolio...',
   ],
   executive: [
-    'Reviewing overall fund performance...',
-    'Evaluating risk exposure levels...',
-    'Planning capital allocation...',
-    'Assessing market opportunities...',
-    'Setting investment strategy...',
+    'Reviewing our overall position in {ticker}...',
+    'Evaluating risk exposure levels for {ticker}...',
+    'Planning capital allocation for our {ticker} position...',
+    'Assessing market opportunities related to {ticker}...',
+    'Setting investment strategy for {ticker} and related stocks...',
+    'Evaluating analyst consensus on {ticker} vs our internal analysis...',
+    'Reviewing potential regulatory impacts on {ticker}\'s business model...',
+    'Analyzing {ticker}\'s earnings call transcript for strategic insights...',
+    'Discussing {ticker}\'s valuation with the investment committee...',
+    'Considering hedging strategies for our {ticker} position...',
   ],
   riskManager: [
-    'Monitoring position limits...',
-    'Assessing VaR metrics...',
-    'Evaluating counterparty risk...',
-    'Stress testing portfolios...',
-    'Reviewing compliance standards...',
+    'Monitoring position limits for {ticker}...',
+    'Assessing VaR metrics with our current {ticker} exposure...',
+    'Evaluating counterparty risk in our {ticker} derivatives...',
+    'Stress testing our portfolio with different {ticker} scenarios...',
+    'Reviewing compliance standards for our {ticker} transactions...',
+    'Calculating downside protection needs for our {ticker} position...',
+    'Analyzing correlation between {ticker} and other portfolio holdings...',
+    'Evaluating sector concentration risk with our {ticker} position...',
+    'Running liquidity analysis on our {ticker} holdings...',
+    'Monitoring options chain activity for unusual {ticker} patterns...',
   ],
 };
 
 // Character conversations for interaction
 const CONVERSATIONS = [
-  'Did you see the latest market movement?',
-  'I\'m seeing an interesting pattern in these numbers.',
-  'We should adjust our exposure to this sector.',
-  'The fundamentals are strong but technicals suggest caution.',
-  'Let\'s discuss this at the next strategy meeting.',
-  'Our model indicates a potential opportunity here.',
-  'We need to hedge this position better.',
-  'The risk metrics are showing some concerns.',
-  'I think we should increase our allocation here.',
-  'This volatility is creating some good entry points.',
+  'Did you see {ticker}\'s latest price movement?',
+  'I\'m seeing an interesting pattern in {ticker}\'s numbers.',
+  'We should adjust our exposure to {ticker} in this market.',
+  '{ticker}\'s fundamentals are strong but technicals suggest caution.',
+  'Let\'s discuss {ticker} at the next strategy meeting.',
+  'Our model indicates a potential opportunity in {ticker}.',
+  'We need to hedge our {ticker} position better.',
+  'The risk metrics for {ticker} are showing some concerns.',
+  'I think we should increase our allocation to {ticker}.',
+  'This volatility in {ticker} is creating some good entry points.',
+  '{ticker}\'s recent earnings call had some interesting revelations.',
+  'The analyst consensus on {ticker} doesn\'t match what I\'m seeing.',
+  'Have you noticed the unusual options activity in {ticker}?',
+  'I\'m concerned about {ticker}\'s exposure to regulatory changes.',
+  'The technical indicators for {ticker} are flashing a signal.',
+  'What\'s your take on {ticker}\'s management team?',
+  'I\'ve been analyzing {ticker}\'s cash flow statements - impressive growth!',
+  'The institutional buying in {ticker} has been accelerating.',
+  'We should compare {ticker}\'s valuation metrics to its peers.',
+  'The sentiment analysis on {ticker} is showing a bullish trend.'
 ];
 
 // Generate a random position within a room
@@ -542,6 +577,46 @@ const useSimulationEngine = () => {
     }
   }, [dispatch, currentMarketEvents]);
   
+  // Map room IDs to friendly names
+  const roomNames = {
+    'room-0': 'Fundamental Analysis Room',
+    'room-1': 'Technical Analysis Room', 
+    'room-2': 'CEO Office',
+    'room-3': 'Trading Floor'
+  };
+
+  // Movement messages for different character types
+  const movementMessages = {
+    'analyst': [
+      "I need to check these company financials in the {dest}",
+      "Going to the {dest} to review quarterly reports",
+      "Moving to the {dest} to analyze some new financial data",
+      "Heading over to the {dest} to discuss valuation metrics",
+      "I've got some financial models to update in the {dest}"
+    ],
+    'quant': [
+      "Going to the {dest} to run some new algorithms",
+      "I need to check the trading signals in the {dest}",
+      "Moving to the {dest} to optimize my technical models",
+      "Heading to the {dest} to analyze price patterns",
+      "Need to update my prediction models in the {dest}"
+    ],
+    'executive': [
+      "I should check in at the {dest}",
+      "Going to the {dest} to review performance metrics",
+      "Need to discuss strategy in the {dest}",
+      "Moving to the {dest} to oversee operations",
+      "I have a meeting in the {dest} about portfolio allocation"
+    ],
+    'riskManager': [
+      "Going to assess exposure levels in the {dest}",
+      "Moving to the {dest} to update risk parameters",
+      "Need to review compliance in the {dest}",
+      "Heading to the {dest} to check portfolio volatility",
+      "Going to the {dest} to monitor position limits"
+    ]
+  };
+
   // Function to make characters move between rooms
   const moveCharacters = useCallback(() => {
     characters.forEach(character => {
@@ -570,7 +645,16 @@ const useSimulationEngine = () => {
         dispatch(setCharacterTarget({ id: character.id, target }));
         dispatch(updateCharacterRoom({ id: character.id, roomId: targetRoomId }));
         
-        // Log the movement
+        // Get friendly room names
+        const fromRoomName = (roomNames as any)[character.currentRoom] || character.currentRoom;
+        const toRoomName = (roomNames as any)[targetRoomId] || targetRoomId;
+        
+        // Pick a random movement message
+        const messages = (movementMessages as any)[character.type] || ["Moving to the {dest}"];
+        const messageTemplate = messages[Math.floor(Math.random() * messages.length)];
+        const message = messageTemplate.replace('{dest}', toRoomName);
+        
+        // Log the movement with more detailed message
         dispatch(addLogEntry({
           id: Math.random().toString(36).substr(2, 9),
           timestamp: Date.now(),
@@ -578,14 +662,14 @@ const useSimulationEngine = () => {
           characterType: character.type,
           roomId: character.currentRoom,
           actionType: 'movement',
-          description: `${character.name} is moving to ${targetRoomId}`,
-          details: { from: character.currentRoom, to: targetRoomId }
+          description: `${character.name}: "${message}"`,
+          details: { from: fromRoomName, to: toRoomName, message }
         }));
         
         // Add to character history
         dispatch(addActivityToHistory({ 
           id: character.id, 
-          activity: `Moving to ${targetRoomId}`
+          activity: message
         }));
       }
     });
@@ -593,6 +677,9 @@ const useSimulationEngine = () => {
   
   // Function to make characters perform tasks
   const performCharacterTasks = useCallback(() => {
+    // Define the stock tickers we're tracking
+    const tickers = ['AMZN', 'NVDA', 'MU', 'WMT', 'DIS'];
+
     characters.forEach(character => {
       // Only idle characters can start tasks
       if (character.state === 'idle' && Math.random() < 0.05) {
@@ -602,9 +689,13 @@ const useSimulationEngine = () => {
           state: 'working' 
         }));
         
+        // Pick a random stock ticker
+        const ticker = tickers[Math.floor(Math.random() * tickers.length)];
+        
         // Get task message based on character type
         const messages = CHARACTER_MESSAGES[character.type];
-        const taskMessage = messages[Math.floor(Math.random() * messages.length)];
+        const messageTemplate = messages[Math.floor(Math.random() * messages.length)];
+        const taskMessage = messageTemplate.replace('{ticker}', ticker);
         
         dispatch(updateCharacterTask({ 
           id: character.id, 
@@ -619,8 +710,8 @@ const useSimulationEngine = () => {
           characterType: character.type,
           roomId: character.currentRoom,
           actionType: 'analysis',
-          description: `${character.name} is ${taskMessage}`,
-          details: { task: taskMessage }
+          description: `${character.name}: "${taskMessage}"`,
+          details: { task: taskMessage, ticker }
         }));
         
         // Add to character history
@@ -671,6 +762,9 @@ const useSimulationEngine = () => {
   
   // Function to generate conversations between characters
   const generateConversations = useCallback(() => {
+    // Define the stock tickers we're tracking
+    const tickers = ['AMZN', 'NVDA', 'MU', 'WMT', 'DIS'];
+    
     // Group characters by room
     const charactersByRoom: Record<string, Character[]> = {};
     
@@ -702,8 +796,12 @@ const useSimulationEngine = () => {
             state: 'talking' 
           }));
           
-          // Pick a random conversation topic
-          const content = CONVERSATIONS[Math.floor(Math.random() * CONVERSATIONS.length)];
+          // Pick a random stock ticker
+          const ticker = tickers[Math.floor(Math.random() * tickers.length)];
+          
+          // Pick a random conversation topic and replace ticker
+          const template = CONVERSATIONS[Math.floor(Math.random() * CONVERSATIONS.length)];
+          const content = template.replace('{ticker}', ticker);
           const timestamp = Date.now();
           
           // Add conversation to both characters
@@ -714,14 +812,24 @@ const useSimulationEngine = () => {
             timestamp
           }));
           
+          // Generate a relevant response
+          const responses = [
+            `I agree, ${ticker} is worth watching.`,
+            `That's a good point about ${ticker}.`,
+            `I've been following ${ticker} closely too.`,
+            `My analysis on ${ticker} shows similar patterns.`,
+            `Let's discuss ${ticker} more in our next meeting.`
+          ];
+          const response = responses[Math.floor(Math.random() * responses.length)];
+          
           dispatch(addConversation({
             id: char2.id,
             withCharacterId: char1.id,
-            content: `Responding to: ${content}`,
+            content: response,
             timestamp: timestamp + 1000
           }));
           
-          // Log the conversation
+          // Log the conversation with a more detailed format
           dispatch(addLogEntry({
             id: Math.random().toString(36).substr(2, 9),
             timestamp,
@@ -729,19 +837,19 @@ const useSimulationEngine = () => {
             characterType: char1.type,
             roomId,
             actionType: 'communication',
-            description: `${char1.name} is talking with ${char2.name}`,
-            details: { message: content }
+            description: `${char1.name}: "${content}"\n${char2.name}: "${response}"`,
+            details: { message: content, response, ticker }
           }));
           
           // Add to character histories
           dispatch(addActivityToHistory({ 
             id: char1.id, 
-            activity: `Discussing with ${char2.name}` 
+            activity: `Discussing ${ticker} with ${char2.name}` 
           }));
           
           dispatch(addActivityToHistory({ 
             id: char2.id, 
-            activity: `Discussing with ${char1.name}` 
+            activity: `Discussing ${ticker} with ${char1.name}` 
           }));
           
           // Set timeout to end conversation
@@ -932,6 +1040,10 @@ const useSimulationEngine = () => {
     // Check if we've moved to a new day
     if (lastDateRef.current && 
         newDate.getDate() !== lastDateRef.current.getDate()) {
+      // Process pre-generated events and trades for this day
+      console.log(`Processing daily data for ${newDate.toISOString().split('T')[0]}`);
+      processDailyData(newDate).catch(error => console.error('Error processing daily data:', error));
+      
       // Handle day transition - dispatch an event that we can listen for
       const dayCompleteEvent = new CustomEvent('dayComplete', { 
         detail: { 
@@ -1007,6 +1119,13 @@ const useSimulationEngine = () => {
   ]);
   
   // Main simulation loop
+  // Preload events and trades
+  useEffect(() => {
+    // Load events and trades in advance
+    loadEvents().catch(console.error);
+    loadTrades().catch(console.error);
+  }, []);
+
   useEffect(() => {
     if (characters.length === 0) {
       // Initialize the simulation if no characters exist

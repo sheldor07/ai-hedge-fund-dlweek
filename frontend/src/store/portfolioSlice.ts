@@ -19,8 +19,68 @@ const initialState: PortfolioState = {
   portfolio: {
     cash: 1000000, // $1 million initial investment
     totalValue: 1000000,
-    holdings: [],
-    performanceHistory: []
+    holdings: [
+      {
+        stock: 'AMZN',
+        quantity: 0,
+        averagePurchasePrice: 0,
+        currentPrice: 178.35,
+        currentValue: 0,
+        unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
+        allocation: 0
+      },
+      {
+        stock: 'NVDA',
+        quantity: 0,
+        averagePurchasePrice: 0,
+        currentPrice: 822.79,
+        currentValue: 0,
+        unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
+        allocation: 0
+      },
+      {
+        stock: 'MU',
+        quantity: 0,
+        averagePurchasePrice: 0,
+        currentPrice: 94.42,
+        currentValue: 0,
+        unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
+        allocation: 0
+      },
+      {
+        stock: 'WMT',
+        quantity: 0,
+        averagePurchasePrice: 0,
+        currentPrice: 59.68,
+        currentValue: 0,
+        unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
+        allocation: 0
+      },
+      {
+        stock: 'DIS',
+        quantity: 0,
+        averagePurchasePrice: 0,
+        currentPrice: 111.95,
+        currentValue: 0,
+        unrealizedPnL: 0,
+        unrealizedPnLPercent: 0,
+        allocation: 0
+      }
+    ],
+    performanceHistory: [
+      {
+        date: new Date().toISOString().split('T')[0],
+        totalValue: 1000000,
+        dailyChange: 0,
+        dailyChangePercent: 0,
+        cash: 1000000,
+        holdings: []
+      }
+    ]
   },
   orderBook: {
     orders: [],

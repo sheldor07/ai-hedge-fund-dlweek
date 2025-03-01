@@ -4,6 +4,25 @@ interface LoadingScreenProps {
   onLoadingComplete: () => void;
 }
 
+const Logo: React.FC = () => (
+  <div style={{
+    marginBottom: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }}>
+    <img 
+      src="/biglogo.png" 
+      alt="Herkshire Bathaway Logo" 
+      style={{
+        width: 'auto',
+        height: '120px',
+        filter: 'drop-shadow(0 2px 15px rgba(100, 181, 246, 0.4))'
+      }}
+    />
+  </div>
+);
+
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
   const [progress, setProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('Loading Assets...');
@@ -87,24 +106,19 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
         marginBottom: '40px',
         textAlign: 'center'
       }}>
-        <h1 style={{
-          fontSize: '3rem',
-          color: 'white',
-          margin: '0 0 10px 0',
-          fontWeight: 'bold',
-          textShadow: '0 2px 10px rgba(0,0,0,0.3)'
-        }}>
-          Welcome to Herkshire Bathaway
-        </h1>
-        
+        <Logo />
         <h2 style={{
-          fontSize: '1.2rem',
+          fontSize: '1.4rem',
           color: '#e3f2fd',
           fontWeight: 'normal',
           margin: '0',
-          opacity: 0.8
+          opacity: 0.9,
+          letterSpacing: '1px',
+          lineHeight: '1.6',
+          maxWidth: '600px',
+          padding: '0 20px'
         }}>
-          Welcome to the future of algorithmic trading
+         Welcome to Warren Buffett's worst nightmare
         </h2>
       </div>
       
@@ -160,18 +174,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ onLoadingComplete }) => {
         {loadingMessage}
       </div>
       
-      {/* Financial-themed low poly background elements */}
-      <div style={{
-        position: 'absolute',
-        bottom: '10%',
-        left: '5%',
-        width: '90%',
-        height: '30%',
-        zIndex: -1,
-        opacity: 0.2,
-        background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'100%25\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0,40 L20,35 L40,45 L60,40 L80,55 L100,30\' stroke=\'white\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E") no-repeat bottom left',
-        backgroundSize: 'cover'
-      }} />
+    
     </div>
   );
 };
