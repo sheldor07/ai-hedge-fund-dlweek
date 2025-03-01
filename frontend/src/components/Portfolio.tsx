@@ -4,14 +4,73 @@ import { RootState } from '../store';
 import { setCurrentView } from '../store/simulationSlice';
 import { setSelectedTimeRange } from '../store/portfolioSlice';
 import {
-  PortfolioHolding,
-  Transaction,
-  PortfolioMetrics
-} from '../store/portfolioSlice';
+  Portfolio as PortfolioType,
+  Holding,
+  Order,
+  OrderStatus,
+  TradeAction,
+  DailyPerformance
+} from '../models/types';
+
+interface HoldingWithAllocation extends Holding {
+  currentValue: number;
+  allocationPercentage: number;
+  profitLoss: number;
+  profitLossPercentage: number;
+  name?: string;
+  ticker?: string;
+  companyId?: string;
+  sharesHeld: number;
+  currentPrice: number;
+  purchasePrice: number;
+}
+
+interface CashFlow {
+  id: string;
+  timestamp: number;
+  type: 'deposit' | 'withdrawal' | 'dividend' | 'interest';
+  amount: number;
+  description: string;
+}
+
+interface PortfolioMetrics {
+  cashAvailable: number;
+  dailyReturn: number;
+  monthlyReturn: number;
+  ytdReturn: number;
+  alpha: number;
+  beta: number;
+  sharpeRatio: number;
+  maxDrawdown: number;
+  volatility: number;
+}
+
+interface HistoricalDataPoint {
+  timestamp: number;
+  value: number;
+}
+
+interface PortfolioState {
+  holdings: HoldingWithAllocation[];
+  metrics: PortfolioMetrics;
+  transactions: Array<{
+    id: string;
+    action: 'buy' | 'sell' | 'hold';
+    ticker: string;
+    shares: number;
+    price: number;
+    formattedDate: string;
+    timestamp: number;
+    decisionMaker: string;
+  }>;
+  historicalPerformance: HistoricalDataPoint[];
+  cashFlows: CashFlow[];
+  selectedTimeRange: '1D' | '1W' | '1M' | '3M' | 'YTD' | '1Y' | 'ALL';
+}
 
 const Portfolio: React.FC = () => {
   const dispatch = useDispatch();
-  const portfolioState = useSelector((state: RootState) => state.portfolio);
+  const portfolioState = useSelector((state: RootState) => state.portfolio as unknown as PortfolioState);
   const [activeTab, setActiveTab] = useState<'holdings' | 'orders' | 'performance' | 'cash'>('holdings');
   const [orderBookFilter, setOrderBookFilter] = useState<{
     action: 'all' | 'buy' | 'sell' | 'hold';
@@ -25,18 +84,18 @@ const Portfolio: React.FC = () => {
 
   // Calculate derived data
   const totalPortfolioValue = portfolioState.holdings.reduce(
-    (sum, holding) => sum + holding.sharesHeld * holding.currentPrice,
+    (sum: number, holding: HoldingWithAllocation) => sum + (holding.sharesHeld || holding.quantity) * holding.currentPrice,
     0
   );
 
   const totalPortfolioValueWithCash = totalPortfolioValue + portfolioState.metrics.cashAvailable;
 
   // Calculate allocation percentages
-  const holdingsWithAllocation = portfolioState.holdings.map(holding => {
-    const currentValue = holding.sharesHeld * holding.currentPrice;
+  const holdingsWithAllocation = portfolioState.holdings.map((holding: HoldingWithAllocation) => {
+    const currentValue = (holding.sharesHeld || holding.quantity) * holding.currentPrice;
     const allocationPercentage = (currentValue / totalPortfolioValueWithCash) * 100;
-    const profitLoss = (holding.currentPrice - holding.purchasePrice) * holding.sharesHeld;
-    const profitLossPercentage = ((holding.currentPrice - holding.purchasePrice) / holding.purchasePrice) * 100;
+    const profitLoss = (holding.currentPrice - (holding.purchasePrice || holding.averagePurchasePrice)) * (holding.sharesHeld || holding.quantity);
+    const profitLossPercentage = ((holding.currentPrice - (holding.purchasePrice || holding.averagePurchasePrice)) / (holding.purchasePrice || holding.averagePurchasePrice)) * 100;
     
     return {
       ...holding,
@@ -44,11 +103,13 @@ const Portfolio: React.FC = () => {
       allocationPercentage,
       profitLoss,
       profitLossPercentage,
+      sharesHeld: holding.sharesHeld || holding.quantity,
+      purchasePrice: holding.purchasePrice || holding.averagePurchasePrice
     };
   });
 
   // Function to filter order book
-  const filteredTransactions = portfolioState.transactions.filter(transaction => {
+  const filteredTransactions = portfolioState.transactions.filter((transaction) => {
     // Filter by action
     if (orderBookFilter.action !== 'all' && transaction.action !== orderBookFilter.action) {
       return false;
@@ -72,12 +133,12 @@ const Portfolio: React.FC = () => {
   });
 
   // Return to office view
-  const handleReturnToOffice = () => {
+  const handleReturnToOffice = (): void => {
     dispatch(setCurrentView('office'));
   };
 
   // Time range selector buttons
-  const timeRangeButtons = [
+  const timeRangeButtons: { label: string; value: '1D' | '1W' | '1M' | '3M' | 'YTD' | '1Y' | 'ALL' }[] = [
     { label: '1D', value: '1D' },
     { label: '1W', value: '1W' },
     { label: '1M', value: '1M' },
@@ -91,12 +152,12 @@ const Portfolio: React.FC = () => {
   const renderHoldingsTable = () => {
     // Calculate totals for the summary row
     const totalValue = holdingsWithAllocation.reduce(
-      (sum, holding) => sum + holding.currentValue,
+      (sum: number, holding: HoldingWithAllocation) => sum + holding.currentValue,
       0
     );
     
     const totalProfitLoss = holdingsWithAllocation.reduce(
-      (sum, holding) => sum + holding.profitLoss,
+      (sum: number, holding: HoldingWithAllocation) => sum + holding.profitLoss,
       0
     );
     
@@ -263,15 +324,15 @@ const Portfolio: React.FC = () => {
                 }}>
                   <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{holding.name}</td>
                   <td style={{ padding: '10px 15px' }}>{holding.ticker}</td>
-                  <td style={{ padding: '10px 15px', textAlign: 'right' }}>{holding.sharesHeld.toLocaleString()}</td>
+                  <td style={{ padding: '10px 15px', textAlign: 'right' }}>{(holding.sharesHeld || holding.quantity).toLocaleString()}</td>
                   <td style={{ padding: '10px 15px', textAlign: 'right' }}>
                     ${holding.currentPrice.toFixed(2)}
                   </td>
                   <td style={{ padding: '10px 15px', textAlign: 'right' }}>
-                    ${holding.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    ${((holding.sharesHeld || holding.quantity) * holding.currentPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>
                   <td style={{ padding: '10px 15px', textAlign: 'right' }}>
-                    ${holding.purchasePrice.toFixed(2)}
+                    ${(holding.purchasePrice || holding.averagePurchasePrice).toFixed(2)}
                   </td>
                   <td style={{ 
                     padding: '10px 15px', 
@@ -370,7 +431,7 @@ const Portfolio: React.FC = () => {
             {/* Filter dropdown for action */}
             <select 
               value={orderBookFilter.action}
-              onChange={(e) => setOrderBookFilter({
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setOrderBookFilter({
                 ...orderBookFilter, 
                 action: e.target.value as 'all' | 'buy' | 'sell' | 'hold'
               })}
@@ -390,7 +451,7 @@ const Portfolio: React.FC = () => {
             {/* Filter dropdown for ticker */}
             <select 
               value={orderBookFilter.ticker || ''}
-              onChange={(e) => setOrderBookFilter({
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setOrderBookFilter({
                 ...orderBookFilter, 
                 ticker: e.target.value || null
               })}
@@ -492,15 +553,15 @@ const Portfolio: React.FC = () => {
 
   // Render performance metrics
   const renderPerformanceMetrics = () => {
-    // Sample historical data for chart (simplified for this example)
+    // Sample historical data for chart
     const chartData = portfolioState.historicalPerformance;
     const dataPoints = chartData.length;
-    const maxValue = Math.max(...chartData.map(point => point.value));
-    const minValue = Math.min(...chartData.map(point => point.value));
+    const maxValue = Math.max(...chartData.map((point: HistoricalDataPoint) => point.value));
+    const minValue = Math.min(...chartData.map((point: HistoricalDataPoint) => point.value));
     const range = maxValue - minValue;
     
     // Calculate metrics summary boxes
-    const metricBoxes = [
+    const metricBoxes: { label: string; value: string }[] = [
       { label: 'Daily Return', value: `${portfolioState.metrics.dailyReturn.toFixed(2)}%` },
       { label: 'Monthly Return', value: `${portfolioState.metrics.monthlyReturn.toFixed(2)}%` },
       { label: 'YTD Return', value: `${portfolioState.metrics.ytdReturn.toFixed(2)}%` },
@@ -635,7 +696,7 @@ const Portfolio: React.FC = () => {
                 <path
                   d={`
                     M 0 ${100 - ((chartData[0].value - minValue) / range) * 100}
-                    ${chartData.map((point, i) => {
+                    ${chartData.map((point: HistoricalDataPoint, i: number) => {
                       const x = (i / (dataPoints - 1)) * dataPoints;
                       const y = 100 - ((point.value - minValue) / range) * 100;
                       return `L ${x} ${y}`;
@@ -651,7 +712,7 @@ const Portfolio: React.FC = () => {
                 <path
                   d={`
                     M 0 ${100 - ((chartData[0].value - minValue) / range) * 100}
-                    ${chartData.map((point, i) => {
+                    ${chartData.map((point: HistoricalDataPoint, i: number) => {
                       const x = (i / (dataPoints - 1)) * dataPoints;
                       const y = 100 - ((point.value - minValue) / range) * 100;
                       return `L ${x} ${y}`;
@@ -852,7 +913,7 @@ const Portfolio: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {portfolioState.cashFlows.map((cashFlow) => {
+              {portfolioState.cashFlows.map((cashFlow: CashFlow) => {
                 const date = new Date(cashFlow.timestamp);
                 return (
                   <tr key={cashFlow.id} style={{ 

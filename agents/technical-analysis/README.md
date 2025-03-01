@@ -1,6 +1,6 @@
-# Technical Analysis Agent
+# Herkshire Bathaway: Technical Analysis Agent
 
-This module implements AI-powered technical analysis agents for a hedge fund simulation. The agents analyze stock price data for selected tickers using machine learning models to generate trading signals and insights.
+This module implements AI-powered technical analysis agents for the Herkshire Bathaway hedge fund simulation. The agents analyze stock price data for selected tickers using machine learning models to generate trading signals and insights.
 
 ## Overview
 
