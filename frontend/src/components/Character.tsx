@@ -351,6 +351,7 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
             textAlign: 'center',
             fontSize: '14px',
             transform: 'translate(-50%, -50%)',
+            zIndex: 100
           }}
         >
           {speechBubbleContent}
@@ -371,6 +372,7 @@ const Character: React.FC<CharacterProps> = ({ character }) => {
           pointerEvents: 'none',
           width: '60px',
           textAlign: 'center',
+          zIndex: 100
         }}
       >
         {character.state}

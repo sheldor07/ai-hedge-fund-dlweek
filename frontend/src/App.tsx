@@ -15,6 +15,7 @@ import ComputerScreen from './components/ComputerScreen';
 import Sidebar from './components/Sidebar';
 import KnowledgeBase from './components/KnowledgeBase';
 import Portfolio from './components/Portfolio';
+import AgentViewPanel from './components/AgentViewPanel';
 // Scenes
 import HedgeFundBuilding from './scenes/HedgeFundBuilding';
 
@@ -149,6 +150,9 @@ function App() {
       
       {/* Character details when one is selected */}
       {focusedEntity.type === 'character' && <CharacterDetails />}
+      
+      {/* Agent View Panel when a room is selected */}
+      <AgentViewPanel />
     </div>
   );
 }
