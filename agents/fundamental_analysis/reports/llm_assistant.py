@@ -10,23 +10,12 @@ logger = logging.getLogger("stock_analyzer.reports.llm")
 class LLMAssistant:
     
     def __init__(self):
-        """Initialize the LLM assistant."""
         self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         self.model = LLM_MODEL
         self.max_tokens = LLM_MAX_TOKENS
         self.temperature = LLM_TEMPERATURE
     
     def enhance_company_description(self, ticker: str, description: str) -> str:
-        """
-        Enhance a company description with more detailed and engaging content.
-        
-        Args:
-            ticker (str): The company ticker symbol
-            description (str): The original description
-            
-        Returns:
-            str: Enhanced company description
-        """
         prompt = f"""
         You are a financial analyst writing a stock report. Please enhance the following company description 
         for {ticker} to make it more informative and engaging. Keep it concise (max 3-4 sentences),
@@ -213,7 +202,6 @@ class LLMAssistant:
             return "Risk analysis could not be generated due to insufficient data."
     
     def synthesize_news_sentiment(self, ticker: str, news_data: Dict[str, Any]) -> str:
-        # Format the news data for the prompt
         news_str = f"Overall Sentiment Score: {news_data.get('sentiment_score', 0)}\n\nRECENT ARTICLES:\n"
         
         if "articles" in news_data:
