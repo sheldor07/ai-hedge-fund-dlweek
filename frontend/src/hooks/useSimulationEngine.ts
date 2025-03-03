@@ -1083,7 +1083,7 @@ const useSimulationEngine = () => {
     // Generate new character events occasionally
     generateCharacterEvents();
     
-    // Only run these during business hours (9am-5pm) on weekdays
+    // Only run simulation during business hours (9am-5pm) on weekdays
     const isBusinessHours = hours >= 9 && hours < 17;
     const isWeekday = newDate.getDay() !== 0 && newDate.getDay() !== 6;
     
@@ -1099,6 +1099,31 @@ const useSimulationEngine = () => {
       // Update performance metrics occasionally
       if (Math.random() < 0.05) {
         updatePerformanceMetrics();
+      }
+    } else {
+      // If not during business hours, fast forward to next business day
+      if (isWeekday && hours >= 17) {
+        // It's after hours on a weekday, go to 9am next day
+        const nextDay = new Date(newDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setHours(9, 0, 0, 0);
+        dispatch(updateCurrentDate(nextDay));
+        lastDateRef.current = nextDay;
+      } else if (!isWeekday) {
+        // It's a weekend, go to Monday 9am
+        const nextDay = new Date(newDate);
+        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+          nextDay.setDate(nextDay.getDate() + 1);
+        }
+        nextDay.setHours(9, 0, 0, 0);
+        dispatch(updateCurrentDate(nextDay));
+        lastDateRef.current = nextDay;
+      } else if (hours < 9) {
+        // It's before hours, go to 9am same day
+        const sameDay = new Date(newDate);
+        sameDay.setHours(9, 0, 0, 0);
+        dispatch(updateCurrentDate(sameDay));
+        lastDateRef.current = sameDay;
       }
     }
   }, [
